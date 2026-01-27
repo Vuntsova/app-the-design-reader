@@ -437,6 +437,31 @@ const askChoice = async (
   return answer.value
 }
 
+const askMultiChoice = async (
+  question: string,
+  options: Array<{ value: string; label: string; checked?: boolean }>,
+): Promise<string[]> => {
+  if (isNonInteractive) {
+    // In non-interactive mode, return all pre-checked options
+    return options.filter(opt => opt.checked).map(opt => opt.value)
+  }
+
+  const answer = await inquirer.prompt([
+    {
+      type: "checkbox",
+      name: "values",
+      message: question,
+      choices: options.map((opt) => ({
+        name: opt.label,
+        value: opt.value,
+        checked: opt.checked ?? false,
+      })),
+    },
+  ])
+
+  return answer.values
+}
+
 // ========================================
 // VALIDATORS (IMPROVED)
 // ========================================
@@ -834,6 +859,18 @@ const updateBackendProviderImports = (selectedProvider: BackendProvider): void =
         // Update the env import to remove isConvex
         if (line.includes("isSupabase, isConvex") && line.includes("from")) {
           newLines.push(line.replace("isSupabase, isConvex", "isSupabase"))
+          continue
+        }
+
+        // Skip ConvexProviderWrapper JSX usage (opening and closing tags)
+        if (line.includes("<ConvexProviderWrapper>") || line.includes("</ConvexProviderWrapper>")) {
+          continue
+        }
+
+        // Skip comments about "both providers" that become misleading when only using Supabase
+        if (line.includes("Always wrap with both providers") ||
+            line.includes("React's rules of hooks require") ||
+            line.includes("The unused provider will be a no-op")) {
           continue
         }
 
@@ -1908,6 +1945,33 @@ type ServiceCatalogEntry = {
   handler: (services: EnvVars, defaults: Partial<EnvVars>, options?: SetupOptions) => Promise<boolean>
 }
 
+/**
+ * Check if an API key is a placeholder value from .env.example
+ * Placeholder values should not count as "configured"
+ */
+const isValidApiKey = (key: string | undefined): boolean => {
+  if (!key) return false
+  const lowerKey = key.toLowerCase()
+  return !(
+    lowerKey.startsWith("your-") ||
+    lowerKey.includes("placeholder") ||
+    lowerKey.includes("example") ||
+    lowerKey.includes("-key-here") ||
+    lowerKey === "your-ios-key" ||
+    lowerKey === "your-android-key" ||
+    lowerKey === "your-web-key"
+  )
+}
+
+/**
+ * Check if Firebase Cloud Messaging is configured
+ * FCM is configured by placing google-services.json in the Android app directory
+ */
+const isFcmConfigured = (): boolean => {
+  const googleServicesPath = path.join(__dirname, "apps/app/android/app/google-services.json")
+  return fs.existsSync(googleServicesPath)
+}
+
 const getServiceStatus = (services: EnvVars): ServiceStatus => {
   const backendProvider = services.EXPO_PUBLIC_BACKEND_PROVIDER || "supabase"
   return {
@@ -1918,25 +1982,19 @@ const getServiceStatus = (services: EnvVars): ServiceStatus => {
         services.EXPO_PUBLIC_USE_MOCK_NOTIFICATIONS
     ),
     backend: Boolean(services.EXPO_PUBLIC_BACKEND_PROVIDER),
-    supabase: backendProvider === "supabase" && Boolean(
-      services.EXPO_PUBLIC_SUPABASE_URL || services.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+    supabase: backendProvider === "supabase" && (
+      isValidApiKey(services.EXPO_PUBLIC_SUPABASE_URL) || isValidApiKey(services.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY)
     ),
-    convex: backendProvider === "convex" && Boolean(services.EXPO_PUBLIC_CONVEX_URL),
-    google: Boolean(services.EXPO_PUBLIC_GOOGLE_CLIENT_ID || services.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID),
-    apple: Boolean(
-      services.EXPO_PUBLIC_APPLE_SERVICES_ID ||
-        services.EXPO_PUBLIC_APPLE_TEAM_ID
-    ),
-    posthog: Boolean(services.EXPO_PUBLIC_POSTHOG_API_KEY),
-    revenuecat: Boolean(
-      services.EXPO_PUBLIC_REVENUECAT_IOS_KEY ||
-        services.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY ||
-        services.EXPO_PUBLIC_REVENUECAT_WEB_KEY
-    ),
-    sentry: Boolean(services.EXPO_PUBLIC_SENTRY_DSN),
-    // FCM is configured via google-services.json, not env vars
-    // Server-side push credentials are stored in backend (Supabase/Convex)
-    fcm: false,
+    convex: backendProvider === "convex" && isValidApiKey(services.EXPO_PUBLIC_CONVEX_URL),
+    google: isValidApiKey(services.EXPO_PUBLIC_GOOGLE_CLIENT_ID) || isValidApiKey(services.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID),
+    apple: isValidApiKey(services.EXPO_PUBLIC_APPLE_SERVICES_ID) || isValidApiKey(services.EXPO_PUBLIC_APPLE_TEAM_ID),
+    posthog: isValidApiKey(services.EXPO_PUBLIC_POSTHOG_API_KEY),
+    revenuecat: isValidApiKey(services.EXPO_PUBLIC_REVENUECAT_IOS_KEY) ||
+      isValidApiKey(services.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY) ||
+      isValidApiKey(services.EXPO_PUBLIC_REVENUECAT_WEB_KEY),
+    sentry: isValidApiKey(services.EXPO_PUBLIC_SENTRY_DSN),
+    // FCM is configured via google-services.json in the Android app directory
+    fcm: isFcmConfigured(),
     widgets: Boolean(services.EXPO_PUBLIC_ENABLE_WIDGETS === "true"),
   }
 }
@@ -2546,7 +2604,6 @@ const configureServicesSequentially = async (
   options: SetupOptions = {}
 ): Promise<number> => {
   let configuredCount = 0
-  let skipRemaining = false
 
   // Step 1: Choose backend provider first
   const backendProvider = await configureBackendProvider(services, defaults, options)
@@ -2561,32 +2618,49 @@ const configureServicesSequentially = async (
     if (configured) configuredCount += 1
   }
 
-  // Ask upfront if they want to configure all services or skip optional ones
+  // Step 3: Configure app environment (always required)
+  const appEnvService = servicesCatalogWithoutBackend[0]
+  const appEnvConfigured = await appEnvService.handler(services, defaults, options)
+  if (appEnvConfigured) configuredCount += 1
+
+  // Step 4: Let user select which optional services to configure
+  const optionalServices = servicesCatalogWithoutBackend.slice(1) // Skip appEnv
+
   if (!isNonInteractive && !options.skipConfirm) {
-    console.log(chalk.cyan("\n💡 Quick Setup Tip:"))
-    console.log(chalk.dim("   We'll go through each service one by one."))
-    console.log(chalk.dim("   You can skip any service and add it later - your app will work fine!"))
-    console.log(chalk.dim(`   Your backend (${backendProvider}) is already configured.`))
-    console.log("")
-  }
+    console.log(chalk.cyan("\n📦 Optional Services"))
+    console.log(chalk.dim("   Select which services you want to configure now."))
+    console.log(chalk.dim("   Use ↑↓ to move, SPACE to select, ENTER to confirm."))
+    console.log(chalk.dim("   You can always add more services later by running 'yarn setup' again.\n"))
 
-  // Step 3: Go through remaining services (skip appEnv first, then continue)
-  for (let i = 0; i < servicesCatalogWithoutBackend.length; i++) {
-    if (skipRemaining) break
+    const selectedServiceKeys = await askMultiChoice(
+      "Which services do you want to configure?",
+      optionalServices.map(service => ({
+        value: service.key,
+        label: service.label,
+        checked: false, // None pre-selected by default
+      }))
+    )
 
-    const service = servicesCatalogWithoutBackend[i]
-    const configured = await service.handler(services, defaults, options)
-    if (configured) configuredCount += 1
+    if (selectedServiceKeys.length === 0) {
+      console.log(chalk.green("\n✅ No optional services selected. Your app is ready to go!"))
+      console.log(chalk.dim("   Run 'yarn setup' anytime to add more services.\n"))
+    } else {
+      console.log(chalk.cyan(`\n🔧 Configuring ${selectedServiceKeys.length} selected service(s)...\n`))
 
-    // Ask about skipping remaining services after each service (except the last one)
-    if (!isNonInteractive && i < servicesCatalogWithoutBackend.length - 1 && !skipRemaining) {
-      const remaining = servicesCatalogWithoutBackend.length - i - 1
-      const skipAll = await askYesNo(chalk.dim(`\nSkip remaining ${remaining} service(s) and finish setup?`), false)
-      if (skipAll) {
-        skipRemaining = true
-        console.log(chalk.green("\n✅ Great! You can always add these services later by running 'yarn setup' again."))
-        break
+      // Configure only the selected services
+      for (const serviceKey of selectedServiceKeys) {
+        const service = optionalServices.find(s => s.key === serviceKey)
+        if (service) {
+          const configured = await service.handler(services, defaults, { ...options, skipConfirm: true })
+          if (configured) configuredCount += 1
+        }
       }
+    }
+  } else {
+    // Non-interactive mode: go through all services
+    for (const service of optionalServices) {
+      const configured = await service.handler(services, defaults, options)
+      if (configured) configuredCount += 1
     }
   }
 
@@ -3086,7 +3160,8 @@ async function setup(): Promise<void> {
     console.log(chalk.dim('   the database schema changes I need."'))
 
     console.log(chalk.bold("\n🔗 Test Deep Linking:"))
-    console.log(chalk.dim(`   xcrun simctl openurl booted "${effectiveConfig.scheme}://profile"`))
+    console.log(chalk.dim(`   Dev build:  xcrun simctl openurl booted "exp+${effectiveConfig.scheme}://profile"`))
+    console.log(chalk.dim(`   Prod build: xcrun simctl openurl booted "${effectiveConfig.scheme}://profile"`))
 
     console.log(chalk.green.bold("\n" + repeatLine("=")))
     console.log(chalk.green.bold("Happy coding! 🚀"))

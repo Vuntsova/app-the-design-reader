@@ -238,7 +238,18 @@ export function useSupabaseAuth(): SupabaseAuthState & SupabaseAuthActions {
   const signInWithMagicLink = useCallback(async (email: string) => {
     setIsLoading(true)
     try {
-      const { error } = await supabase.auth.signInWithOtp({ email })
+      // Generate proper redirect URL for magic link
+      // On web: redirect to auth callback page
+      // On mobile: no redirect needed (user enters OTP code manually)
+      const emailRedirectTo =
+        Platform.OS === "web" && typeof window !== "undefined"
+          ? `${window.location.origin}/auth/callback`
+          : undefined
+
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: emailRedirectTo ? { emailRedirectTo } : undefined,
+      })
       return { error: error as Error | null }
     } finally {
       setIsLoading(false)

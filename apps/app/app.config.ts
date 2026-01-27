@@ -84,6 +84,39 @@ module.exports = ({ config }: ConfigContext): ExpoConfig => {
 
   return {
     ...baseConfig,
+    // Pass environment variables through extra for web builds (Vercel deployment)
+    // Metro doesn't inline process.env.EXPO_PUBLIC_* for web, so we need this fallback
+    // Keys use snake_case to match what env.ts expects in Constants.expoConfig.extra
+    extra: {
+      ...baseConfig.extra,
+      // Backend provider
+      backend_provider: process.env.EXPO_PUBLIC_BACKEND_PROVIDER,
+      app_env: process.env.EXPO_PUBLIC_APP_ENV,
+      // Supabase
+      supabase_url: process.env.EXPO_PUBLIC_SUPABASE_URL,
+      supabase_publishable_key: process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+      // Convex
+      convex_url: process.env.EXPO_PUBLIC_CONVEX_URL,
+      // RevenueCat
+      revenuecat_ios_key: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY,
+      revenuecat_android_key: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY,
+      revenuecat_web_key: process.env.EXPO_PUBLIC_REVENUECAT_WEB_KEY,
+      // Analytics & Monitoring
+      posthog_api_key: process.env.EXPO_PUBLIC_POSTHOG_API_KEY,
+      posthog_host: process.env.EXPO_PUBLIC_POSTHOG_HOST,
+      sentry_dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+      // OAuth
+      google_client_id: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
+      google_ios_client_id: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+      apple_services_id: process.env.EXPO_PUBLIC_APPLE_SERVICES_ID,
+      apple_team_id: process.env.EXPO_PUBLIC_APPLE_TEAM_ID,
+      // Feature flags
+      enable_widgets: process.env.EXPO_PUBLIC_ENABLE_WIDGETS,
+      use_mock_notifications: process.env.EXPO_PUBLIC_USE_MOCK_NOTIFICATIONS,
+      // Auth redirects
+      email_redirect_url: process.env.EXPO_PUBLIC_EMAIL_REDIRECT_URL,
+      password_reset_redirect_url: process.env.EXPO_PUBLIC_PASSWORD_RESET_REDIRECT_URL,
+    },
     // Ensure icon is preserved from app.json
     icon: config.icon || "./assets/images/app-icon-all.png",
     ios: {

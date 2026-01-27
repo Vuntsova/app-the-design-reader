@@ -9,6 +9,8 @@ Common issues and solutions when developing with Shipnative.
 - [Platform-Specific Issues](#platform-specific-issues)
 - [Mock Mode Issues](#mock-mode-issues)
 - [Build Errors](#build-errors)
+- [EAS Build Issues](#eas-build-issues)
+- [Deep Linking](#deep-linking)
 - [Runtime Errors](#runtime-errors)
 - [Performance Issues](#performance-issues)
 - [Development Tools](#development-tools)
@@ -267,6 +269,38 @@ Or set environment variable:
 export ANDROID_HOME=/Users/$USER/Library/Android/sdk
 ```
 
+#### Java Version Incompatibility
+
+**Problem**: Android build fails with cryptic error like:
+```
+Error resolving plugin [id: 'com.facebook.react.settings']
+> 25.0.1
+```
+
+**Cause**: Java 25 is too new and incompatible with React Native's Gradle plugin. The `25.0.1` in the error message is the Java version, not a React Native version.
+
+**Solution**: Use Java 17 (LTS) instead:
+
+```bash
+# Check available Java versions
+/usr/libexec/java_home -V
+
+# Use Java 17 for the build
+JAVA_HOME=$(/usr/libexec/java_home -v 17) yarn android
+
+# Or set permanently in your shell profile (~/.zshrc or ~/.bashrc)
+export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+```
+
+**Installing Java 17**:
+```bash
+# macOS with Homebrew
+brew install --cask temurin@17
+
+# Or download from Adoptium
+# https://adoptium.net/temurin/releases/?version=17
+```
+
 #### Gradle Build Fails
 
 **Problem**: "Could not resolve all files for configuration"
@@ -303,6 +337,33 @@ yarn app:web --port 3000
 1. **Add domain to Supabase** → Settings → API → URL Configuration
 2. **Check API configuration** allows web origin
 3. **Use proxy** during development (see `metro.config.js`)
+
+#### Vercel: Missing Environment Variables
+
+**Problem**: Expo web build deployed to Vercel fails with:
+```
+Missing required environment variables: supabaseUrl, supabasePublishableKey
+```
+
+**Root Cause**: Metro doesn't inline `process.env.EXPO_PUBLIC_*` for web builds the way it does for native. The `env.ts` file falls back to `Constants.expoConfig.extra`, which needs to be explicitly populated.
+
+**Solution**: Already fixed in the boilerplate. The `app.config.ts` includes an `extra` section that passes all `EXPO_PUBLIC_*` variables through to `Constants.expoConfig.extra`:
+
+```typescript
+// In app.config.ts
+return {
+  ...baseConfig,
+  extra: {
+    ...baseConfig.extra,
+    supabase_url: process.env.EXPO_PUBLIC_SUPABASE_URL,
+    supabase_publishable_key: process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    // ... all other EXPO_PUBLIC_* vars
+  },
+  // ...
+}
+```
+
+Just ensure your Vercel project has the environment variables set in the project settings.
 
 ---
 
@@ -409,6 +470,122 @@ yarn app:android
 
 ---
 
+## EAS Build Issues
+
+### Yarn 4.x / Corepack Conflicts
+
+**Problem**: EAS Build fails with errors like:
+- `EEXIST: file already exists` when corepack is enabled
+- `ETARGET No matching version found for yarn@4.9.1` when specifying yarn version
+- `Usage Error: This project is configured to use yarn` version mismatch errors
+
+**Root Cause**: Yarn 4.x is distributed via corepack, not npm. EAS's package manager installation logic conflicts with corepack's shims.
+
+**Solution**: Shipnative bundles Yarn 4.x directly in the repository. This approach works with any CI system including EAS.
+
+The configuration that makes this work:
+
+1. **Bundled Yarn binary** in `.yarn/releases/yarn-4.9.1.cjs`
+
+2. **yarnPath configuration** in `.yarnrc.yml`:
+   ```yaml
+   nodeLinker: node-modules
+   yarnPath: .yarn/releases/yarn-4.9.1.cjs
+   ```
+
+3. **Node version pinned** in `apps/app/eas.json`:
+   ```json
+   {
+     "build": {
+       "production": {
+         "node": "20.19.0"
+       }
+     }
+   }
+   ```
+
+**Verify it works locally**:
+```bash
+# Should show 4.9.1
+yarn --version
+
+# Build should work
+cd apps/app
+eas build --platform ios --profile development
+```
+
+**If you're upgrading an older project**:
+```bash
+# Download and bundle yarn
+mkdir -p .yarn/releases
+curl -L -o .yarn/releases/yarn-4.9.1.cjs https://repo.yarnpkg.com/4.9.1/packages/yarnpkg-cli/bin/yarn.js
+
+# Add yarnPath to .yarnrc.yml
+echo "yarnPath: .yarn/releases/yarn-4.9.1.cjs" >> .yarnrc.yml
+
+# Commit the bundled yarn (it's ~3MB)
+git add .yarn/releases/yarn-4.9.1.cjs .yarnrc.yml
+git commit -m "Bundle yarn 4.9.1 for EAS compatibility"
+```
+
+**Note**: Do NOT use `corepack: true` or specify `yarn: "4.x.x"` in eas.json - the bundled yarn approach handles everything automatically.
+
+---
+
+## Deep Linking
+
+### Testing Deep Links
+
+**Important**: Expo dev builds use a different URL scheme than production builds!
+
+- **Dev build**: `exp+yourscheme://path`
+- **Prod build**: `yourscheme://path`
+
+Test on iOS Simulator:
+```bash
+# For development builds (yarn ios)
+xcrun simctl openurl booted "exp+yourscheme://profile"
+
+# For production builds (EAS/TestFlight/App Store)
+xcrun simctl openurl booted "yourscheme://profile"
+```
+
+Test on Android:
+```bash
+# For development builds
+adb shell am start -a android.intent.action.VIEW -d "exp+yourscheme://profile"
+
+# For production builds
+adb shell am start -a android.intent.action.VIEW -d "yourscheme://profile"
+```
+
+**Tip**: Check your built app's `Info.plist` (iOS) or `AndroidManifest.xml` for `CFBundleURLSchemes` to verify which scheme is registered.
+
+### Deep Link Not Working
+
+1. **Verify scheme in `app.json`**:
+   ```json
+   {
+     "expo": {
+       "scheme": "yourscheme"
+     }
+   }
+   ```
+
+2. **Check you're using the correct prefix** (dev vs prod)
+
+3. **Verify the path is configured** in `apps/app/app/navigators/linking.ts`
+
+4. **Test the URL is valid**:
+   ```typescript
+   import * as Linking from 'expo-linking'
+
+   const url = Linking.createURL('profile')
+   console.log('Deep link URL:', url)
+   ```
+
+---
+
 ## Runtime Errors
 
 ### Navigation Errors
@@ -482,6 +659,26 @@ const MyComponent = () => {
      router.replace('/login') // This causes loops
    }
    ```
+
+### RevenueCat "Invalid API Key" Error
+
+**Problem**: You see `[RevenueCat] There was a credentials issue. Invalid API Key.` even though you haven't configured RevenueCat yet.
+
+**Cause**: Your `.env` file has placeholder values like `EXPO_PUBLIC_REVENUECAT_IOS_KEY=your-ios-key`. These placeholder strings are truthy, so the SDK attempts to use them as real API keys instead of falling back to mock mode.
+
+**Solution**:
+
+1. **Use empty values** instead of placeholders:
+   ```bash
+   # In apps/app/.env
+   EXPO_PUBLIC_REVENUECAT_IOS_KEY=
+   EXPO_PUBLIC_REVENUECAT_ANDROID_KEY=
+   EXPO_PUBLIC_REVENUECAT_WEB_KEY=
+   ```
+
+2. **Or add real API keys** from [RevenueCat Dashboard](https://app.revenuecat.com/settings/api-keys)
+
+**Note**: The app now detects placeholder values (starting with `your-`) and automatically falls back to mock mode.
 
 ### Subscription Purchase Fails
 

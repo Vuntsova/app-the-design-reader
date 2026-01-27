@@ -124,11 +124,28 @@ const mobileApiKey = Platform.select({
 })
 const webApiKey = env.revenueCatWebKey
 
+/**
+ * Check if an API key is a placeholder value from .env.example
+ * Placeholder values cause SDK errors instead of graceful mock mode
+ */
+const isPlaceholderKey = (key: string | undefined): boolean => {
+  if (!key) return true
+  const lowerKey = key.toLowerCase()
+  return (
+    lowerKey.startsWith("your-") ||
+    lowerKey === "your-ios-key" ||
+    lowerKey === "your-android-key" ||
+    lowerKey === "your-web-key" ||
+    lowerKey.includes("placeholder") ||
+    lowerKey.includes("example")
+  )
+}
+
 // Determine if we should use mock
 const isDevEnv = __DEV__ || isDevelopment
 const useMock =
-  (isDevEnv && !mobileApiKey && Platform.OS !== "web") ||
-  (isDevEnv && !webApiKey && Platform.OS === "web")
+  (isDevEnv && isPlaceholderKey(mobileApiKey) && Platform.OS !== "web") ||
+  (isDevEnv && isPlaceholderKey(webApiKey) && Platform.OS === "web")
 
 // SDK instances
 let MobilePurchases: RevenueCatMobileSdk | null = null

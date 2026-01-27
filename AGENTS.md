@@ -21,6 +21,42 @@ Make sure the code you write is compliant with App Store and play store policies
 - **Forms**: React Hook Form + Zod
 - **Backend**: Supabase OR Convex (choose one), RevenueCat, PostHog, Sentry
 
+### Storage Decision Guide (MMKV vs Supabase)
+
+**CRITICAL: Choose the right storage for each use case.**
+
+| Use Case | Storage | Why |
+|----------|---------|-----|
+| User profile data | **Supabase** | Syncs across devices, needs RLS protection |
+| User preferences (theme, language) | **Supabase** | Syncs across devices when user logs in elsewhere |
+| Posts, messages, shared content | **Supabase** | Multi-user access, real-time updates |
+| Friends lists, relationships | **Supabase** | Relational data with RLS |
+| Auth tokens/sessions | **Supabase Auth** | Secure storage handled by SDK |
+| Onboarding completion flag | **MMKV** (local cache) + **Supabase** (source of truth) | Fast UI + persistent sync |
+| Subscription status cache | **MMKV** | RevenueCat is source of truth; MMKV is fast local cache |
+| Temporary form state | **Zustand** (memory) | No persistence needed |
+| Draft content before save | **MMKV** | Survives app restart, not synced |
+
+**Decision Tree:**
+```
+Does data need to sync across user's devices?
+  → YES → Use Supabase
+  → NO → Continue...
+
+Does data require authentication/authorization?
+  → YES → Use Supabase (RLS)
+  → NO → Continue...
+
+Is it a cache of server data for fast UI?
+  → YES → Use MMKV (with Supabase as source of truth)
+  → NO → Continue...
+
+Is it temporary/ephemeral local state?
+  → YES → Use MMKV or Zustand (memory)
+```
+
+**⚠️ NEVER store sensitive data (tokens, passwords, PII) in MMKV. Use Supabase Auth's secure storage.**
+
 ### Backend Choice
 The boilerplate supports two backends with native-level integration:
 

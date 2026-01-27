@@ -3,6 +3,9 @@
     "version": ">= 3.15.1"
   },
   "build": {
+    "production": {
+      "node": "20.19.0"
+    },
     "development": {
       "extends": "production",
       "distribution": "internal",
@@ -31,8 +34,7 @@
     "preview:device": {
       "extends": "preview",
       "ios": { "simulator": false }
-    },
-    "production": {}
+    }
   },
   "submit": {
     "production": {}

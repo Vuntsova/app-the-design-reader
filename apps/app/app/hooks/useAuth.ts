@@ -606,10 +606,18 @@ function useSupabaseAuth(): UseAuthReturn {
   const signInWithMagicLink = useCallback(async (email: string, captchaToken?: string) => {
     setLoading(true)
     try {
+      // Generate proper redirect URL for magic link
+      // On web: redirect to auth callback page
+      // On mobile: no redirect needed (user enters OTP code manually)
+      const emailRedirectTo =
+        Platform.OS === "web" && typeof window !== "undefined"
+          ? `${window.location.origin}/auth/callback`
+          : undefined
+
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: undefined,
+          emailRedirectTo,
           ...(captchaToken ? { captchaToken } : {}),
         },
       })

@@ -19,20 +19,28 @@ This project uses **automatic mock services** for Supabase and other services (P
 
 ### Automatic Detection
 
-Mock services are automatically enabled based on environment variables:
+Mock services are automatically enabled based on environment variables. **Placeholder values** like `your-ios-key` are also detected and will trigger mock mode (preventing SDK credential errors):
 
 ```typescript
 // apps/app/app/services/mocks/index.ts
 export const USE_MOCK_SUPABASE = __DEV__ && !process.env.EXPO_PUBLIC_SUPABASE_URL
 export const USE_MOCK_POSTHOG = __DEV__ && !process.env.EXPO_PUBLIC_POSTHOG_API_KEY
-export const USE_MOCK_REVENUECAT = __DEV__ && 
-  ((Platform.OS === "web" && !process.env.EXPO_PUBLIC_REVENUECAT_WEB_KEY) ||
-   (Platform.OS !== "web" && !process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY && 
-    !process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY))
 export const USE_MOCK_SENTRY = __DEV__ && !process.env.EXPO_PUBLIC_SENTRY_DSN
+
+// apps/app/app/services/revenuecat.ts - also detects placeholder values
+const isPlaceholderKey = (key: string | undefined): boolean => {
+  if (!key) return true
+  const lowerKey = key.toLowerCase()
+  return (
+    lowerKey.startsWith("your-") ||
+    lowerKey.includes("placeholder") ||
+    lowerKey.includes("example")
+  )
+}
+const useMock = isDevEnv && isPlaceholderKey(mobileApiKey)
 ```
 
-**Key Point for AIs**: When a user asks for "frontend only" or "without backend", the mock services will automatically handle all backend operations.
+**Key Point for AIs**: When a user asks for "frontend only" or "without backend", the mock services will automatically handle all backend operations. Placeholder API keys from `.env.example` will also trigger mock mode instead of causing SDK errors.
 
 ### Available Mock Services
 

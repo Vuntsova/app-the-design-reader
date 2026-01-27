@@ -312,7 +312,12 @@ function useConvexAppAuth(): AppAuthState & AppAuthActions {
       isAuthenticated: false,
       isLoading: false,
       user: null,
+      userId: null,
+      isEmailVerified: false,
+      hasCompletedOnboarding: false,
+      provider: "convex",
       signIn: async () => ({ error: new Error("Convex is not the selected backend") }),
+      signUp: async () => ({ error: new Error("Convex is not the selected backend") }),
       signOut: async () => ({ error: new Error("Convex is not the selected backend") }),
       signInWithGoogle: async () => ({ error: new Error("Convex is not the selected backend") }),
       signInWithApple: async () => ({ error: new Error("Convex is not the selected backend") }),
@@ -320,7 +325,9 @@ function useConvexAppAuth(): AppAuthState & AppAuthActions {
       verifyOtp: async () => ({ error: new Error("Convex is not the selected backend") }),
       resetPassword: async () => ({ error: new Error("Convex is not the selected backend") }),
       updateProfile: async () => ({ error: new Error("Convex is not the selected backend") }),
-      refreshProfile: async () => {},
+      completeOnboarding: async () => ({ error: new Error("Convex is not the selected backend") }),
+      setUser: () => {},
+      initialize: async () => {},
     }
   }
 

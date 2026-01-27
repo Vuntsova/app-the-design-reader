@@ -111,7 +111,8 @@ const askQuestion = (index) => {
     console.log("\n🔗 Deep Linking:")
     console.log("   • URL Scheme: shipnative://")
     console.log("   • Configure in app.json for universal links")
-    console.log('   • Test: xcrun simctl openurl booted "shipnative://profile"')
+    console.log("   • Test (dev build):  xcrun simctl openurl booted \"exp+shipnative://profile\"")
+    console.log("   • Test (prod build): xcrun simctl openurl booted \"shipnative://profile\"")
     console.log("   • See docs/NOTIFICATIONS.md for deep linking with notifications")
 
     console.log("\n💡 Next Steps:")

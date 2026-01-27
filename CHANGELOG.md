@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Improved
+
+- **Setup Wizard UX**: Redesigned service selection flow to reduce friction
+  - Users now select all desired services upfront using a multi-select checkbox interface
+  - Removed the repetitive "Skip remaining services?" prompt after each service
+  - Only selected services are configured, making the setup process faster and less annoying
+  - Services can still be added later by running `yarn setup` again
+
+- **Pre-flight Checks for Dev Commands**: Added automatic validation before running dev commands
+  - `yarn dev`, `yarn app:dev`, `yarn app:web`, `yarn app:start`, `yarn android`, `yarn ios` now check prerequisites
+  - Warns users with clear error messages if `yarn install` or `yarn setup` haven't been run
+  - Prevents cryptic errors from missing dependencies or configuration
+
+### Fixed
+
+- **Setup Wizard BackendProvider Cleanup**: Fixed "Property 'ConvexProviderWrapper' doesn't exist" error when using Supabase
+  - **Issue:** After running `yarn setup` and selecting Supabase as backend, the app would crash with a render error
+  - **Root Cause:** The setup script removed the `ConvexProviderWrapper` function definition but didn't remove the JSX usage of `<ConvexProviderWrapper>` in the return statement
+  - **Solution:** Updated setup script to also skip `<ConvexProviderWrapper>` and `</ConvexProviderWrapper>` JSX lines, and removed misleading comments about "both providers"
+
+- **Git Tracking of .yarn/install-state.gz**: Removed `.yarn/install-state.gz` from git tracking
+  - File was already in `.gitignore` but was previously committed
+  - No longer appears in git status or requires user action during commits
+
+- **EAS Build Yarn 4.x Compatibility**: Fixed EAS Build failures caused by Yarn 4.x + corepack conflicts
+  - **Issue:** EAS Build couldn't properly handle Yarn 4.x because it's distributed via corepack, not npm. Enabling `corepack: true` caused EEXIST errors when EAS also tried to install yarn via npm.
+  - **Root Cause:** Yarn 4.x is not available on npm registry - it's only distributed through corepack. EAS's package manager installation logic conflicts with corepack's shims.
+  - **Solution:** Bundled Yarn 4.9.1 directly in `.yarn/releases/yarn-4.9.1.cjs` with `yarnPath` configuration in `.yarnrc.yml`. This makes builds fully self-contained and works with any CI system.
+  - EAS now uses the bundled yarn automatically without needing corepack or npm installation
+  - Added `node: "20.19.0"` to `eas.json` production profile for consistent Node version
+
+- **Vercel Web Deployment Environment Variables**: Fixed environment variables not being accessible in Expo web builds deployed to Vercel
+  - **Issue:** Builds failed with "Missing required environment variables: supabaseUrl, supabasePublishableKey"
+  - **Root Cause:** Metro doesn't inline `process.env.EXPO_PUBLIC_*` for web builds; the fallback to `Constants.expoConfig.extra` wasn't populated
+  - **Solution:** Added `extra` section to `app.config.ts` that passes all `EXPO_PUBLIC_*` variables through to `Constants.expoConfig.extra`
+  - All environment variables (Supabase, Convex, RevenueCat, PostHog, Sentry, OAuth, feature flags) are now properly accessible on Vercel deployments
+
+### Documentation
+
+- **Android Java Version Troubleshooting**: Added documentation for Java 25 incompatibility
+  - Java 25 is too new for React Native's Gradle plugin; users need Java 17 (LTS)
+  - The cryptic error `> 25.0.1` is the Java version, not a React Native version
+  - Added to both `vibe/TROUBLESHOOTING.md` and `mintlify_docs/docs/troubleshooting.mdx`
+  - Includes installation instructions via Homebrew (`temurin@17`)
+
 ### Added
 
 - **Screen Creation Guidelines**: Added comprehensive screen layout patterns

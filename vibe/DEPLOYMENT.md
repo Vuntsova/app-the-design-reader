@@ -537,6 +537,8 @@ Or manually:
    - Project Settings → Domains
    - Add your domain
 
+**Note on Environment Variables:** The `app.config.ts` includes an `extra` section that passes all `EXPO_PUBLIC_*` environment variables through to `Constants.expoConfig.extra`. This is required because Metro doesn't inline `process.env.EXPO_PUBLIC_*` for web builds the same way it does for native builds. The `env.ts` file reads from `Constants.expoConfig.extra` as a fallback, so your Vercel deployments will work correctly as long as you set the environment variables in your Vercel project settings.
+
 ### Option 2: Netlify
 
 1. **Build**:
