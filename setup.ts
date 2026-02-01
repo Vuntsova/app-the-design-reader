@@ -487,7 +487,7 @@ const validateSupabaseKey = (key: string) => {
   return key.length >= 20
 }
 const validatePostHogKey = (key: string) => {
-  if (!key) return false
+  if (!key) return true // Allow empty to skip
   // PostHog keys are typically 32+ character alphanumeric strings
   return /^[A-Za-z0-9_-]{20,}$/.test(key)
 }
@@ -502,7 +502,7 @@ const validateConvexUrl = (url: string) => {
   }
 }
 const validateSentryDSN = (dsn: string) => {
-  if (!dsn) return false
+  if (!dsn) return true // Allow empty to skip
   // Sentry DSN format: https://[key]@[host]/[project-id]
   return /^https:\/\/[A-Za-z0-9]+@[A-Za-z0-9.-]+\/[0-9]+$/.test(dsn)
 }
@@ -2301,17 +2301,19 @@ const configureGoogleOAuth = async (
 
   console.log(chalk.cyan("\n🔑 Google OAuth Web Client ID"))
   console.log(chalk.dim("   Find this in Google Cloud Console: APIs & Services > Credentials"))
+  console.log(chalk.dim("   💡 Leave blank to skip and configure later"))
   services.EXPO_PUBLIC_GOOGLE_CLIENT_ID = await askQuestion(
     "Enter your Google OAuth Web Client ID",
-    (id) => id.length > 10,
+    (id) => !id || id.length > 10,
     defaults.EXPO_PUBLIC_GOOGLE_CLIENT_ID
   )
 
   console.log(chalk.cyan("\n📱 Google OAuth iOS Client ID"))
   console.log(chalk.dim("   Needed to register the iOS URL scheme for Google Sign-In"))
+  console.log(chalk.dim("   💡 Leave blank to skip and configure later"))
   services.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID = await askQuestion(
     "Enter your Google OAuth iOS Client ID",
-    (id) => id.length > 10,
+    (id) => !id || id.length > 10,
     defaults.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID
   )
 
@@ -2345,13 +2347,15 @@ const configureAppleSignIn = async (
   console.log(chalk.cyan("\n📋 Apple Services ID"))
   console.log(chalk.dim("   Find this in Apple Developer: Certificates, Identifiers & Profiles > Identifiers"))
   console.log(chalk.dim("   Format: com.yourcompany.appname"))
-  services.EXPO_PUBLIC_APPLE_SERVICES_ID = await askQuestion("Enter your Apple Services ID", (id) => id.includes("."), defaults.EXPO_PUBLIC_APPLE_SERVICES_ID)
-  
+  console.log(chalk.dim("   💡 Leave blank to skip and configure later"))
+  services.EXPO_PUBLIC_APPLE_SERVICES_ID = await askQuestion("Enter your Apple Services ID", (id) => !id || id.includes("."), defaults.EXPO_PUBLIC_APPLE_SERVICES_ID)
+
   console.log(chalk.cyan("\n👥 Apple Team ID"))
   console.log(chalk.dim("   Find this in Apple Developer: Membership (top right corner)"))
   console.log(chalk.dim("   Format: 10 uppercase letters/numbers (e.g., ABC123DEF4)"))
+  console.log(chalk.dim("   💡 Leave blank to skip and configure later"))
   services.EXPO_PUBLIC_APPLE_TEAM_ID = await askQuestion("Enter your Apple Team ID (10 characters)", (id) => {
-    if (!id) return false
+    if (!id) return true // Allow empty to skip
     return /^[A-Z0-9]{10}$/.test(id.toUpperCase())
   }, defaults.EXPO_PUBLIC_APPLE_TEAM_ID)
 
@@ -2394,6 +2398,7 @@ const configurePostHog = async (
 
   console.log(chalk.cyan("\n🔑 PostHog API Key"))
   console.log(chalk.dim("   Find this in PostHog: Project Settings > Project API Key"))
+  console.log(chalk.dim("   💡 Leave blank to skip and configure later"))
   services.EXPO_PUBLIC_POSTHOG_API_KEY = await askQuestion("Enter your PostHog API Key", validatePostHogKey, defaults.EXPO_PUBLIC_POSTHOG_API_KEY, true)
   
   console.log(chalk.cyan("\n🌐 PostHog Host"))
@@ -2456,6 +2461,7 @@ const configureSentry = async (
   console.log(chalk.cyan("\n🔗 Sentry DSN"))
   console.log(chalk.dim("   Find this in Sentry: Settings > Projects > [Your Project] > Client Keys (DSN)"))
   console.log(chalk.dim("   Looks like: https://xxxxx@xxxxx.ingest.sentry.io/xxxxx"))
+  console.log(chalk.dim("   💡 Leave blank to skip and configure later"))
   services.EXPO_PUBLIC_SENTRY_DSN = await askQuestion("Enter your Sentry DSN", validateSentryDSN, defaults.EXPO_PUBLIC_SENTRY_DSN)
 
   return true
