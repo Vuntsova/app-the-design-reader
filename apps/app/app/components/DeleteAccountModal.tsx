@@ -1,6 +1,14 @@
 import type { FC } from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Switch, View } from "react-native"
+import {
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  Switch,
+  View,
+} from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useTranslation } from "react-i18next"
 import { StyleSheet, useUnistyles } from "react-native-unistyles"

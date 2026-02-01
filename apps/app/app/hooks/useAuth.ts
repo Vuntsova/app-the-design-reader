@@ -710,9 +710,16 @@ function useConvexAuthImpl(): UseAuthReturn {
   } = require("./convex")
 
   // Get auth state from Convex
+  // Note: isConvex is a build-time constant, so these hooks are always called
+  // in the same order during runtime (the early return above only triggers
+  // when Convex is not configured, which is determined at build time)
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const convexAuth = useConvexAuthHook()
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const socialAuth = useConvexSocialAuth()
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const passwordAuth = useConvexPasswordAuth()
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const magicLinkAuth = useConvexMagicLink()
 
   // Convert Convex user to our User type
@@ -756,6 +763,7 @@ function useConvexAuthImpl(): UseAuthReturn {
     convexAuth.isLoading || socialAuth.loading || passwordAuth.loading || magicLinkAuth.loading
 
   // Sign up with email/password
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const signUp = useCallback(
     async (credentials: SignUpCredentials) => {
       // Handle both email and phone credentials (Supabase types)
@@ -777,6 +785,7 @@ function useConvexAuthImpl(): UseAuthReturn {
   )
 
   // Sign in with email/password
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const signIn = useCallback(
     async (credentials: SignInCredentials) => {
       // Handle both email and phone credentials (Supabase types)
@@ -794,6 +803,7 @@ function useConvexAuthImpl(): UseAuthReturn {
   )
 
   // Sign out
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const signOut = useCallback(async () => {
     const result = await passwordAuth.signOut()
     // Clear session from auth store
@@ -802,18 +812,21 @@ function useConvexAuthImpl(): UseAuthReturn {
   }, [passwordAuth])
 
   // Sign in with Google (handles native + OAuth flow)
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const signInWithGoogle = useCallback(async () => {
     const result = await socialAuth.signInWithGoogle()
     return { error: result.error }
   }, [socialAuth])
 
   // Sign in with Apple
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const signInWithApple = useCallback(async () => {
     const result = await socialAuth.signInWithApple()
     return { error: result.error }
   }, [socialAuth])
 
   // Sign in with magic link / OTP
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const signInWithMagicLink = useCallback(
     async (email: string, _captchaToken?: string) => {
       const result = await magicLinkAuth.sendMagicLink(email)
@@ -823,6 +836,7 @@ function useConvexAuthImpl(): UseAuthReturn {
   )
 
   // Verify OTP
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const verifyOtp = useCallback(
     async (email: string, token: string) => {
       const result = await magicLinkAuth.verifyOtp(email, token)
@@ -832,6 +846,7 @@ function useConvexAuthImpl(): UseAuthReturn {
   )
 
   // Reset password
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const resetPassword = useCallback(
     async (email: string) => {
       const result = await passwordAuth.resetPassword(email)
@@ -841,6 +856,7 @@ function useConvexAuthImpl(): UseAuthReturn {
   )
 
   // Update user
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const updateUser = useCallback(
     async (attributes: UpdateUserAttributes) => {
       try {

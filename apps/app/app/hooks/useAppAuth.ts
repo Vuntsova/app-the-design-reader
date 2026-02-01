@@ -335,10 +335,16 @@ function useConvexAppAuth(): AppAuthState & AppAuthActions {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { useConvexAuth, useConvexMagicLink } = require("./convex")
 
+  // Note: isConvex is a build-time constant, so these hooks are always called
+  // in the same order during runtime (the early return above only triggers
+  // when Convex is not configured, which is determined at build time)
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const auth = useConvexAuth()
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const magicLink = useConvexMagicLink()
 
   // Transform Convex user to unified AppUser
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const user: AppUser | null = useMemo(() => {
     if (!auth.user) return null
 
@@ -359,6 +365,7 @@ function useConvexAppAuth(): AppAuthState & AppAuthActions {
     }
   }, [auth.user])
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const updateProfile = useCallback(
     async (data: ProfileUpdateData): Promise<{ error: Error | null }> => {
       try {
@@ -383,6 +390,7 @@ function useConvexAppAuth(): AppAuthState & AppAuthActions {
     [auth],
   )
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const completeOnboarding = useCallback(async (): Promise<{ error: Error | null }> => {
     try {
       await auth.completeOnboarding()
@@ -393,11 +401,13 @@ function useConvexAppAuth(): AppAuthState & AppAuthActions {
   }, [auth])
 
   // Convex doesn't support direct user state manipulation (it's reactive)
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const setUser = useCallback((_newUser: AppUser | null) => {
     // No-op for Convex - user state is managed reactively via useQuery
     // The UI will update automatically when the mutation completes
   }, [])
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const initialize = useCallback(async () => {
     // Convex handles initialization automatically via ConvexAuthProvider
     // No manual initialization needed

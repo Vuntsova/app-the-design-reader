@@ -11,10 +11,7 @@ import type {
   ViewProps,
   ViewStyle,
 } from "react-native"
-import {
-  TouchableOpacity,
-  View,
-} from "react-native"
+import { TouchableOpacity, View } from "react-native"
 import { useUnistyles } from "react-native-unistyles"
 
 import { $styles } from "@/theme/styles"

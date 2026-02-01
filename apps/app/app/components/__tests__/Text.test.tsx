@@ -7,8 +7,8 @@
 import { NavigationContainer } from "@react-navigation/native"
 import { render } from "@testing-library/react-native"
 
-import { Text } from "../Text"
 import { ThemeProvider } from "../../theme/context"
+import { Text } from "../Text"
 
 // Mock @/i18n translate function (react-i18next is mocked in test/setup.ts)
 jest.mock("@/i18n", () => ({
