@@ -187,14 +187,17 @@ export function BarChart(props: BarChartProps) {
     const chartWidth = (propWidth || containerWidth.value) - padding.left - padding.right
     const chartHeight = height - padding.top - padding.bottom
 
-    // Find max value
-    const maxValue = Math.max(...data.map((d) => d.value))
-    const minValue = Math.min(0, ...data.map((d) => d.value))
+    // Find min/max value
+    const allValues = data.map((d) => d.value).filter((v) => Number.isFinite(v))
+    const hasData = allValues.length > 0
+    const maxValue = hasData ? Math.max(...allValues) : 0
+    const minValue = hasData ? Math.min(0, ...allValues) : 0
 
     // Calculate nice round numbers for axis
     const valueRange = maxValue - minValue || 1
     const axisSteps = 5
-    const stepSize = Math.ceil(valueRange / axisSteps / 10) * 10
+    const rawStepSize = valueRange / axisSteps
+    const stepSize = rawStepSize > 0 ? Math.ceil(rawStepSize / 10) * 10 : 1
     const axisMax = Math.ceil(maxValue / stepSize) * stepSize
     const axisMin = Math.floor(minValue / stepSize) * stepSize
     const axisRange = axisMax - axisMin || 1
@@ -204,8 +207,8 @@ export function BarChart(props: BarChartProps) {
     const totalGap = barGap * barCount
     const barSpace = orientation === "vertical" ? chartWidth : chartHeight
 
-    const barSize = barSpace / (barCount + totalGap)
-    const gapSize = barSize * barGap
+    const barSize = barSpace / (barCount + totalGap || 1)
+    const gapSize = barCount > 0 ? barSize * barGap : 0
 
     const bars = data.map((item, index) => {
       const color = item.color || barColor || DEFAULT_COLORS[index % DEFAULT_COLORS.length]

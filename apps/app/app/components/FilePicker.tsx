@@ -147,6 +147,34 @@ const getFileIcon = (type: string): keyof typeof Ionicons.glyphMap => {
   return "document-outline"
 }
 
+const EXTENSION_MIME_MAP: Record<string, string> = {
+  pdf: "application/pdf",
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xls: "application/vnd.ms-excel",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ppt: "application/vnd.ms-powerpoint",
+  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  txt: "text/plain",
+  csv: "text/csv",
+  json: "application/json",
+  zip: "application/zip",
+  rar: "application/vnd.rar",
+}
+
+const normalizeExtension = (ext: string) => ext.replace(/^\./, "").toLowerCase()
+
+const getDocumentPickerTypes = (allowedExtensions?: string[]) => {
+  if (!allowedExtensions?.length) return "*/*"
+
+  const mimeTypes = allowedExtensions
+    .map(normalizeExtension)
+    .map((ext) => EXTENSION_MIME_MAP[ext])
+    .filter(Boolean)
+
+  return mimeTypes.length > 0 ? mimeTypes : "*/*"
+}
+
 /**
  * Check if photo library permissions are configured
  * Returns the current permission status
@@ -236,6 +264,7 @@ export function FilePicker(props: FilePickerProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [permissionStatus, setPermissionStatus] = useState<PermissionStatus>("undetermined")
   const [showPermissionWarning, setShowPermissionWarning] = useState(false)
+  const normalizedAllowedExtensions = allowedExtensions?.map(normalizeExtension)
 
   const scale = useSharedValue(1)
 
@@ -244,10 +273,8 @@ export function FilePicker(props: FilePickerProps) {
     if (fileType === "image" || fileType === "any") {
       checkPhotoPermissions().then((status) => {
         setPermissionStatus(status)
-        // Show warning if not configured (this catches missing Info.plist keys)
-        if (status === "not_configured") {
-          setShowPermissionWarning(true)
-        }
+        // Show warning if not configured/denied to explain next steps.
+        setShowPermissionWarning(status === "not_configured" || status === "denied")
       })
     }
   }, [fileType])
@@ -278,12 +305,12 @@ export function FilePicker(props: FilePickerProps) {
       }
 
       // Check allowed extensions
-      if (allowedExtensions && allowedExtensions.length > 0) {
+      if (normalizedAllowedExtensions && normalizedAllowedExtensions.length > 0) {
         const ext = file.name.split(".").pop()?.toLowerCase()
-        if (!ext || !allowedExtensions.includes(ext)) {
+        if (!ext || !normalizedAllowedExtensions.includes(ext)) {
           Alert.alert(
             "Invalid File Type",
-            `${file.name} is not an allowed file type. Allowed: ${allowedExtensions.join(", ")}`,
+            `${file.name} is not an allowed file type. Allowed: ${normalizedAllowedExtensions.join(", ")}`,
           )
           return false
         }
@@ -291,7 +318,7 @@ export function FilePicker(props: FilePickerProps) {
 
       return true
     },
-    [maxFileSize, allowedExtensions],
+    [maxFileSize, normalizedAllowedExtensions],
   )
 
   const showPermissionSetupAlert = useCallback(() => {
@@ -324,6 +351,7 @@ export function FilePicker(props: FilePickerProps) {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
       if (status !== "granted") {
         setPermissionStatus("denied")
+        setShowPermissionWarning(true)
         Alert.alert(
           "Permission Required",
           "Please allow access to your photo library to select images.",
@@ -336,6 +364,7 @@ export function FilePicker(props: FilePickerProps) {
       }
 
       setPermissionStatus("granted")
+      setShowPermissionWarning(false)
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images"],
@@ -394,7 +423,7 @@ export function FilePicker(props: FilePickerProps) {
       const result = await DocumentPicker.getDocumentAsync({
         multiple,
         copyToCacheDirectory: true,
-        type: allowedExtensions ? allowedExtensions.map((ext) => `application/${ext}`) : "*/*",
+        type: getDocumentPickerTypes(allowedExtensions),
       })
 
       if (!result.canceled && result.assets) {
@@ -488,10 +517,10 @@ export function FilePicker(props: FilePickerProps) {
           onPress={handlePick}
           onPressIn={handlePressIn}
           onPressOut={handlePressOut}
-          disabled={disabled || isLoading}
+          disabled={effectivelyDisabled || isLoading}
           accessibilityRole="button"
           accessibilityLabel={label || "File picker"}
-          accessibilityState={{ disabled: effectivelyDisabled }}
+          accessibilityState={{ disabled: effectivelyDisabled || isLoading }}
         >
           <Animated.View
             style={[

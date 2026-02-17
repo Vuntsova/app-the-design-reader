@@ -181,7 +181,8 @@ export const TextField = forwardRef(function TextField(
   const [internalValue, setInternalValue] = useState(value || "")
 
   // Track value for character count and clear button
-  const currentValue = value !== undefined ? value : internalValue
+  const isControlled = value !== undefined
+  const currentValue = isControlled ? (value ?? "") : internalValue
   const characterCount = currentValue?.length || 0
   const showClearButton = clearable && currentValue && currentValue.length > 0
 
@@ -189,12 +190,16 @@ export const TextField = forwardRef(function TextField(
   const currentStatus = isDisabled ? "disabled" : status
 
   const handleChangeText = (text: string) => {
-    setInternalValue(text)
+    if (!isControlled) {
+      setInternalValue(text)
+    }
     onChangeText?.(text)
   }
 
   const handleClear = () => {
-    setInternalValue("")
+    if (!isControlled) {
+      setInternalValue("")
+    }
     onChangeText?.("")
     onClear?.()
     inputRef.current?.focus()
@@ -277,7 +282,7 @@ export const TextField = forwardRef(function TextField(
           }}
           multiline={multiline}
           maxLength={maxLength}
-          value={value}
+          value={currentValue}
           onChangeText={handleChangeText}
           {...textInputProps}
         />

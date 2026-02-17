@@ -213,9 +213,10 @@ export function DatePicker(props: DatePickerProps) {
         // On iOS, the picker stays open and updates in real-time
         if (selectedDate) {
           setTempDate(selectedDate)
-          // For datetime mode on iOS, we need to update the value but keep showing picker
-          // The user needs to manually dismiss or we handle the transition
-          onChange?.(selectedDate)
+          // For datetime mode, keep changes local until the user confirms.
+          if (mode !== "datetime") {
+            onChange?.(selectedDate)
+          }
         }
       }
     },
@@ -227,13 +228,17 @@ export function DatePicker(props: DatePickerProps) {
     if (mode === "datetime" && pickerMode === "date") {
       setPickerMode("time")
     } else {
+      if (mode === "datetime") {
+        onChange?.(tempDate)
+      }
       setShowPicker(false)
     }
-  }, [mode, pickerMode])
+  }, [mode, onChange, pickerMode, tempDate])
 
   const handleDismiss = useCallback(() => {
+    setTempDate(value || new Date())
     setShowPicker(false)
-  }, [])
+  }, [value])
 
   // Format display value
   const displayValue = useMemo(() => {

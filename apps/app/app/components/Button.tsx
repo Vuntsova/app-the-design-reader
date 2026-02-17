@@ -149,6 +149,7 @@ export function Button(props: ButtonProps) {
     haptic = true,
     fullWidth = false,
     style,
+    accessibilityLabel,
     testID,
   } = props
 
@@ -234,6 +235,7 @@ export function Button(props: ButtonProps) {
         ]}
         testID={testID}
         accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
         accessibilityState={{ disabled: isDisabled }}
       >
         {loading ? (

@@ -1,7 +1,8 @@
 import type { ReactNode } from "react"
-import { createContext, useCallback, useContext, useMemo, useState } from "react"
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
 import { Pressable, View } from "react-native"
 import Animated, {
+  cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -195,16 +196,26 @@ function Toast(props: ToastProps) {
   }, [variant, icon, theme])
 
   // Auto-hide timer
-  useState(() => {
-    if (duration > 0) {
-      // Start progress animation
-      progress.value = withTiming(0, { duration }, (finished) => {
-        if (finished) {
-          runOnJS(onHide)()
-        }
-      })
+  useEffect(() => {
+    cancelAnimation(progress)
+    progress.value = 1
+
+    if (duration <= 0) {
+      return () => {
+        cancelAnimation(progress)
+      }
     }
-  })
+
+    progress.value = withTiming(0, { duration }, (finished) => {
+      if (finished) {
+        runOnJS(onHide)()
+      }
+    })
+
+    return () => {
+      cancelAnimation(progress)
+    }
+  }, [duration, onHide, progress])
 
   // Progress bar animation
   const progressStyle = useAnimatedStyle(() => ({
@@ -217,14 +228,14 @@ function Toast(props: ToastProps) {
       exiting={SlideOutUp.springify().damping(20).stiffness(200)}
       style={[styles.toast, { borderLeftColor: variantConfig.borderColor }]}
     >
-      <Pressable style={styles.toastContent} onPress={onHide}>
+      <View style={styles.toastContent}>
         {variantConfig.icon && (
           <View style={styles.iconContainer}>
             <Icon icon={variantConfig.icon} size={20} color={variantConfig.iconColor} />
           </View>
         )}
 
-        <View style={styles.textContainer}>
+        <Pressable style={styles.textContainer} onPress={onHide}>
           <Text weight="semiBold" size="sm" numberOfLines={1}>
             {title}
           </Text>
@@ -233,7 +244,7 @@ function Toast(props: ToastProps) {
               {description}
             </Text>
           )}
-        </View>
+        </Pressable>
 
         {action && (
           <Pressable style={styles.actionButton} onPress={action.onPress}>
@@ -246,7 +257,7 @@ function Toast(props: ToastProps) {
         <Pressable style={styles.closeButton} onPress={onHide} hitSlop={8}>
           <Icon icon="x" size={16} color={theme.colors.foregroundTertiary} />
         </Pressable>
-      </Pressable>
+      </View>
 
       {/* Progress bar */}
       {duration > 0 && (

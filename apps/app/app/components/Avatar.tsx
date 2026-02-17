@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import type { ImageProps, ViewStyle } from "react-native"
 import { Image, View } from "react-native"
 import Animated, {
@@ -8,6 +8,7 @@ import Animated, {
   withTiming,
   interpolate,
   Easing,
+  cancelAnimation,
 } from "react-native-reanimated"
 import { StyleSheet, useUnistyles } from "react-native-unistyles"
 
@@ -117,17 +118,28 @@ export function Avatar(props: AvatarProps) {
   // Shimmer animation for loading state
   const shimmer = useSharedValue(0)
 
-  // Start shimmer animation when loading
-  if (isLoading || externalLoading) {
-    shimmer.value = withRepeat(
-      withTiming(1, {
-        duration: 1500,
-        easing: Easing.inOut(Easing.ease),
-      }),
-      -1,
-      false,
-    )
-  }
+  useEffect(() => {
+    if (isLoading || externalLoading) {
+      shimmer.value = withRepeat(
+        withTiming(1, {
+          duration: 1500,
+          easing: Easing.inOut(Easing.ease),
+        }),
+        -1,
+        false,
+      )
+      return () => {
+        cancelAnimation(shimmer)
+      }
+    }
+
+    cancelAnimation(shimmer)
+    shimmer.value = 0
+
+    return () => {
+      cancelAnimation(shimmer)
+    }
+  }, [externalLoading, isLoading, shimmer])
 
   const shimmerStyle = useAnimatedStyle(() => ({
     opacity: interpolate(shimmer.value, [0, 0.5, 1], [0.3, 0.6, 0.3]),

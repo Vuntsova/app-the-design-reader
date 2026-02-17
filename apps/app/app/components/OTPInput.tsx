@@ -90,6 +90,7 @@ export const OTPInput = ({
   const inputRefs = useRef<(TextInput | null)[]>([])
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null)
   const hasCalledComplete = useRef(false)
+  const hasAutoFocused = useRef(false)
 
   // Convert value to array of digits
   const digits = value.split("").slice(0, length)
@@ -99,14 +100,16 @@ export const OTPInput = ({
 
   // Focus first empty input on mount
   useEffect(() => {
-    if (autoFocus && !disabled) {
-      const firstEmptyIndex = digits.findIndex((d) => !d)
-      const indexToFocus = firstEmptyIndex === -1 ? length - 1 : firstEmptyIndex
-      setTimeout(() => {
-        inputRefs.current[indexToFocus]?.focus()
-      }, 100)
-    }
-  }, [autoFocus, digits, disabled, length])
+    if (!autoFocus || disabled || hasAutoFocused.current) return
+
+    const firstEmptyIndex = Math.min(value.length, length - 1)
+    const timeout = setTimeout(() => {
+      inputRefs.current[firstEmptyIndex]?.focus()
+      hasAutoFocused.current = true
+    }, 100)
+
+    return () => clearTimeout(timeout)
+  }, [autoFocus, disabled, length, value.length])
 
   // Call onComplete when all digits are filled
   useEffect(() => {
@@ -117,6 +120,12 @@ export const OTPInput = ({
       hasCalledComplete.current = false
     }
   }, [value, length, onComplete])
+
+  useEffect(() => {
+    if (value.length === 0) {
+      hasAutoFocused.current = false
+    }
+  }, [value.length])
 
   const handleChange = useCallback(
     (text: string, index: number) => {

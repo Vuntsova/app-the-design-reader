@@ -1,7 +1,7 @@
-import { useEffect, useMemo } from "react"
+import { useMemo } from "react"
 import type { LayoutChangeEvent } from "react-native"
 import { View } from "react-native"
-import Animated, { useSharedValue, withTiming, Easing } from "react-native-reanimated"
+import Animated, { useSharedValue } from "react-native-reanimated"
 import Svg, {
   Path,
   Circle,
@@ -132,21 +132,10 @@ export function LineChart(props: LineChartProps) {
 
   const { theme } = useUnistyles()
   const containerWidth = useSharedValue(propWidth || 300)
-  const animationProgress = useSharedValue(0)
+  const xAxisDenominator = Math.max(labels.length - 1, 1)
+  void animated
 
   const padding = useMemo(() => ({ ...DEFAULT_PADDING, ...propPadding }), [propPadding])
-
-  useEffect(() => {
-    if (animated) {
-      animationProgress.value = 0
-      animationProgress.value = withTiming(1, {
-        duration: 1000,
-        easing: Easing.out(Easing.cubic),
-      })
-    } else {
-      animationProgress.value = 1
-    }
-  }, [animated, animationProgress, datasets])
 
   const handleLayout = (event: LayoutChangeEvent) => {
     if (!propWidth) {
@@ -158,16 +147,22 @@ export function LineChart(props: LineChartProps) {
   const chartData = useMemo(() => {
     const chartWidth = (propWidth || containerWidth.value) - padding.left - padding.right
     const chartHeight = height - padding.top - padding.bottom
+    const getX = (index: number) =>
+      labels.length <= 1
+        ? padding.left + chartWidth / 2
+        : padding.left + (index / xAxisDenominator) * chartWidth
 
     // Find min/max values across all datasets
-    const allValues = datasets.flatMap((d) => d.data)
-    const minValue = Math.min(0, ...allValues)
-    const maxValue = Math.max(...allValues)
+    const allValues = datasets.flatMap((d) => d.data).filter((v) => Number.isFinite(v))
+    const hasData = allValues.length > 0
+    const minValue = hasData ? Math.min(0, ...allValues) : 0
+    const maxValue = hasData ? Math.max(...allValues) : 0
     const valueRange = maxValue - minValue || 1
 
     // Calculate nice round numbers for y-axis
     const yAxisSteps = 5
-    const stepSize = Math.ceil(valueRange / yAxisSteps / 10) * 10
+    const rawStepSize = valueRange / yAxisSteps
+    const stepSize = rawStepSize > 0 ? Math.ceil(rawStepSize / 10) * 10 : 1
     const yAxisMax = Math.ceil(maxValue / stepSize) * stepSize
     const yAxisMin = Math.floor(minValue / stepSize) * stepSize
     const yAxisRange = yAxisMax - yAxisMin || 1
@@ -175,7 +170,7 @@ export function LineChart(props: LineChartProps) {
     // Calculate points for each dataset
     const datasetPoints = datasets.map((dataset, datasetIndex) => {
       const points = dataset.data.map((value, index) => ({
-        x: padding.left + (index / (labels.length - 1)) * chartWidth,
+        x: getX(index),
         y: padding.top + chartHeight - ((value - yAxisMin) / yAxisRange) * chartHeight,
         value,
       }))
@@ -202,7 +197,7 @@ export function LineChart(props: LineChartProps) {
       yAxisMin,
       yAxisMax,
     }
-  }, [propWidth, containerWidth.value, height, padding, datasets, labels])
+  }, [propWidth, containerWidth.value, height, padding, datasets, labels, xAxisDenominator])
 
   return (
     <View style={[styles.container, style]} onLayout={handleLayout} testID={testID}>
@@ -242,7 +237,10 @@ export function LineChart(props: LineChartProps) {
             ))}
             {/* Vertical grid lines */}
             {labels.map((_, index) => {
-              const x = padding.left + (index / (labels.length - 1)) * chartData.chartWidth
+              const x =
+                labels.length <= 1
+                  ? padding.left + chartData.chartWidth / 2
+                  : padding.left + (index / xAxisDenominator) * chartData.chartWidth
               return (
                 <Line
                   key={`v-grid-${index}`}
@@ -278,7 +276,10 @@ export function LineChart(props: LineChartProps) {
         {/* X-Axis Labels */}
         {showLabels &&
           labels.map((label, index) => {
-            const x = padding.left + (index / (labels.length - 1)) * chartData.chartWidth
+            const x =
+              labels.length <= 1
+                ? padding.left + chartData.chartWidth / 2
+                : padding.left + (index / xAxisDenominator) * chartData.chartWidth
             return (
               <SvgText
                 key={`x-label-${index}`}

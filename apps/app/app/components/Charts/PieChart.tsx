@@ -235,6 +235,7 @@ export function PieChart(props: PieChartProps) {
   const chartData = useMemo(() => {
     const colors = customColors || DEFAULT_COLORS
     const total = data.reduce((sum, item) => sum + item.value, 0)
+    const hasPositiveTotal = total > 0
 
     // Calculate chart dimensions
     const size = Math.min(propWidth || containerWidth.value, height)
@@ -246,8 +247,8 @@ export function PieChart(props: PieChartProps) {
     // Calculate slices
     let currentAngle = initialStartAngle
     const slices = data.map((item, index) => {
-      const percentage = (item.value / total) * 100
-      const sweepAngle = (item.value / total) * 360
+      const percentage = hasPositiveTotal ? (item.value / total) * 100 : 0
+      const sweepAngle = hasPositiveTotal ? (item.value / total) * 360 : 0
       const startAngle = currentAngle
       const endAngle = currentAngle + sweepAngle
 
@@ -277,6 +278,7 @@ export function PieChart(props: PieChartProps) {
       innerRadius,
       slices,
       total,
+      hasPositiveTotal,
     }
   }, [
     propWidth,
@@ -293,23 +295,25 @@ export function PieChart(props: PieChartProps) {
       <View style={styles.chartWrapper}>
         <Svg width={chartData.size} height={chartData.size}>
           <G>
-            {chartData.slices.map((slice, index) => (
-              <AnimatedSlice
-                key={`slice-${index}`}
-                centerX={chartData.centerX}
-                centerY={chartData.centerY}
-                outerRadius={chartData.outerRadius}
-                innerRadius={chartData.innerRadius}
-                startAngle={slice.startAngle}
-                endAngle={slice.endAngle}
-                color={slice.color}
-                index={index}
-                animated={animated}
-              />
-            ))}
+            {chartData.hasPositiveTotal &&
+              chartData.slices.map((slice, index) => (
+                <AnimatedSlice
+                  key={`slice-${index}`}
+                  centerX={chartData.centerX}
+                  centerY={chartData.centerY}
+                  outerRadius={chartData.outerRadius}
+                  innerRadius={chartData.innerRadius}
+                  startAngle={slice.startAngle}
+                  endAngle={slice.endAngle}
+                  color={slice.color}
+                  index={index}
+                  animated={animated}
+                />
+              ))}
 
             {/* Percentage Labels */}
             {showPercentage &&
+              chartData.hasPositiveTotal &&
               chartData.slices.map((slice, index) => {
                 // Only show label if slice is big enough
                 if (slice.percentage < 5) return null

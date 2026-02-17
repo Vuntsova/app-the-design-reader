@@ -53,24 +53,31 @@ export interface DividerProps {
  */
 export function Divider(props: DividerProps) {
   const { orientation = "horizontal", size = "default", label, style } = props
+  const thickness = size === "thin" ? 0.5 : size === "thick" ? 2 : 1
 
-  // Apply variants - map "default" to undefined for Unistyles
-  const sizeForStyles = size === "default" ? undefined : size
-  styles.useVariants({ orientation, size: sizeForStyles })
+  styles.useVariants({ orientation })
 
   if (label && orientation === "horizontal") {
     return (
       <View style={[styles.labelContainer, style]}>
-        <View style={styles.line} />
+        <View style={[styles.line, { height: thickness }]} />
         <Text size="sm" color="tertiary" style={styles.label}>
           {label}
         </Text>
-        <View style={styles.line} />
+        <View style={[styles.line, { height: thickness }]} />
       </View>
     )
   }
 
-  return <View style={[styles.divider, style]} />
+  return (
+    <View
+      style={[
+        styles.divider,
+        orientation === "horizontal" ? { height: thickness } : { width: thickness },
+        style,
+      ]}
+    />
+  )
 }
 
 // =============================================================================
@@ -87,21 +94,8 @@ const styles = StyleSheet.create((theme) => ({
           alignSelf: "stretch",
         },
         vertical: {
+          height: "100%",
           alignSelf: "stretch",
-        },
-      },
-      size: {
-        thin: {
-          height: 0.5,
-          width: 0.5,
-        },
-        default: {
-          height: 1,
-          width: 1,
-        },
-        thick: {
-          height: 2,
-          width: 2,
         },
       },
     },
@@ -109,17 +103,6 @@ const styles = StyleSheet.create((theme) => ({
   labelContainer: {
     flexDirection: "row",
     alignItems: "center",
-    variants: {
-      orientation: {
-        horizontal: {},
-        vertical: {},
-      },
-      size: {
-        thin: {},
-        default: {},
-        thick: {},
-      },
-    },
   },
   line: {
     flex: 1,
