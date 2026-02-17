@@ -61,7 +61,7 @@ export function LoadingScreen(props: LoadingScreenProps) {
 
   useEffect(() => {
     // Pulsing animation
-    Animated.loop(
+    const pulseLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
           toValue: 1.2,
@@ -76,17 +76,26 @@ export function LoadingScreen(props: LoadingScreenProps) {
           useNativeDriver: Platform.OS !== "web", // Native driver not supported on web
         }),
       ]),
-    ).start()
+    )
+    pulseLoop.start()
 
     // Rotation animation
-    Animated.loop(
+    const rotateLoop = Animated.loop(
       Animated.timing(rotateAnim, {
         toValue: 1,
         duration: 2000,
         easing: Easing.linear,
         useNativeDriver: Platform.OS !== "web", // Native driver not supported on web
       }),
-    ).start()
+    )
+    rotateLoop.start()
+
+    return () => {
+      pulseLoop.stop()
+      rotateLoop.stop()
+      pulseAnim.stopAnimation()
+      rotateAnim.stopAnimation()
+    }
   }, [pulseAnim, rotateAnim])
 
   const rotate = rotateAnim.interpolate({
@@ -168,24 +177,32 @@ function LoadingDot({ delay }: { delay: number }) {
   const opacity = useRef(new Animated.Value(0.3)).current
 
   useEffect(() => {
-    setTimeout(() => {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(opacity, {
-            toValue: 1,
-            duration: 600,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: Platform.OS !== "web", // Native driver not supported on web
-          }),
-          Animated.timing(opacity, {
-            toValue: 0.3,
-            duration: 600,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: Platform.OS !== "web", // Native driver not supported on web
-          }),
-        ]),
-      ).start()
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 600,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: Platform.OS !== "web", // Native driver not supported on web
+        }),
+        Animated.timing(opacity, {
+          toValue: 0.3,
+          duration: 600,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: Platform.OS !== "web", // Native driver not supported on web
+        }),
+      ]),
+    )
+
+    const timer = setTimeout(() => {
+      loop.start()
     }, delay)
+
+    return () => {
+      clearTimeout(timer)
+      loop.stop()
+      opacity.stopAnimation()
+    }
   }, [delay, opacity])
 
   return (

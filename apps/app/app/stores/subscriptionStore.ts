@@ -47,6 +47,7 @@ interface SubscriptionState {
   purchasePackage: (pkg: PricingPackage) => Promise<{ error?: Error }>
   restorePurchases: () => Promise<{ error?: Error }>
   initialize: () => Promise<void>
+  cleanup: () => void
   getActiveService: () => SubscriptionService
   addLifecycleListener: (listener: (event: SubscriptionLifecycleData) => void) => () => void
 }
@@ -63,6 +64,16 @@ const mmkvStorage = {
   removeItem: async (name: string) => {
     storage.remove(name)
   },
+}
+
+let subscriptionUpdateUnsubscribe: (() => void) | null = null
+let initializeInFlight: Promise<void> | null = null
+
+const clearSubscriptionUpdateListener = () => {
+  if (subscriptionUpdateUnsubscribe) {
+    subscriptionUpdateUnsubscribe()
+    subscriptionUpdateUnsubscribe = null
+  }
 }
 
 export const useSubscriptionStore = create<SubscriptionState>()(
@@ -246,73 +257,94 @@ export const useSubscriptionStore = create<SubscriptionState>()(
       },
 
       initialize: async () => {
-        try {
-          const user = getAuthStore().getState().user
-          const service = get().getActiveService()
-          const { platform } = get()
-
-          if (user) {
-            // Login to RevenueCat with user ID
-            const result = await service.logIn(user.id)
-
-            if (platform === "revenuecat-web") {
-              set({ webSubscriptionInfo: result.subscriptionInfo })
-            } else {
-              set({ customerInfo: result.subscriptionInfo })
-            }
-
-            get().checkProStatus()
-          } else {
-            // When no user, just get subscription info for anonymous user
-            // Don't call logOut() as it fails if user is already anonymous
-            try {
-              const subscriptionInfo = await service.getSubscriptionInfo()
-
-              if (platform === "revenuecat-web") {
-                set({
-                  webSubscriptionInfo: subscriptionInfo,
-                  isPro: false,
-                })
-              } else {
-                set({
-                  customerInfo: subscriptionInfo,
-                  isPro: false,
-                })
-              }
-            } catch {
-              // If getting info fails, just set empty state
-              // This can happen if RevenueCat isn't fully initialized yet
-              if (platform === "revenuecat-web") {
-                set({
-                  webSubscriptionInfo: null,
-                  isPro: false,
-                })
-              } else {
-                set({
-                  customerInfo: null,
-                  isPro: false,
-                })
-              }
-            }
-          }
-
-          // Fetch available packages
-          await get().fetchPackages()
-
-          // Listen for subscription updates (if supported)
-          if (service.addSubscriptionUpdateListener) {
-            service.addSubscriptionUpdateListener((info) => {
-              if (platform === "revenuecat-web") {
-                set({ webSubscriptionInfo: info })
-              } else {
-                set({ customerInfo: info })
-              }
-              get().checkProStatus()
-            })
-          }
-        } catch (error) {
-          logger.error("Subscription initialization failed", { error })
+        if (initializeInFlight) {
+          await initializeInFlight
+          return
         }
+
+        initializeInFlight = (async () => {
+          try {
+            const user = getAuthStore().getState().user
+            const service = get().getActiveService()
+            const { platform } = get()
+
+            if (user) {
+              // Login to RevenueCat with user ID
+              const result = await service.logIn(user.id)
+
+              if (platform === "revenuecat-web") {
+                set({ webSubscriptionInfo: result.subscriptionInfo })
+              } else {
+                set({ customerInfo: result.subscriptionInfo })
+              }
+
+              get().checkProStatus()
+            } else {
+              // When no user, just get subscription info for anonymous user
+              // Don't call logOut() as it fails if user is already anonymous
+              try {
+                const subscriptionInfo = await service.getSubscriptionInfo()
+
+                if (platform === "revenuecat-web") {
+                  set({
+                    webSubscriptionInfo: subscriptionInfo,
+                    isPro: false,
+                  })
+                } else {
+                  set({
+                    customerInfo: subscriptionInfo,
+                    isPro: false,
+                  })
+                }
+              } catch {
+                // If getting info fails, just set empty state
+                // This can happen if RevenueCat isn't fully initialized yet
+                if (platform === "revenuecat-web") {
+                  set({
+                    webSubscriptionInfo: null,
+                    isPro: false,
+                  })
+                } else {
+                  set({
+                    customerInfo: null,
+                    isPro: false,
+                  })
+                }
+              }
+            }
+
+            // Fetch available packages
+            await get().fetchPackages()
+
+            // Prevent duplicate listeners when initialize() is called repeatedly.
+            clearSubscriptionUpdateListener()
+
+            // Listen for subscription updates (if supported)
+            if (service.addSubscriptionUpdateListener) {
+              const unsubscribe = service.addSubscriptionUpdateListener((info) => {
+                const { platform: currentPlatform } = get()
+                if (currentPlatform === "revenuecat-web") {
+                  set({ webSubscriptionInfo: info })
+                } else {
+                  set({ customerInfo: info })
+                }
+                get().checkProStatus()
+              })
+
+              subscriptionUpdateUnsubscribe = typeof unsubscribe === "function" ? unsubscribe : null
+            }
+          } catch (error) {
+            logger.error("Subscription initialization failed", { error })
+          } finally {
+            initializeInFlight = null
+          }
+        })()
+
+        await initializeInFlight
+      },
+
+      cleanup: () => {
+        clearSubscriptionUpdateListener()
       },
 
       addLifecycleListener: (listener) => {

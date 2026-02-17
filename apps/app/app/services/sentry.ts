@@ -38,16 +38,20 @@ type SentryModule = {
 // Sentry SDKs (platform-specific)
 let SentryRN: SentryModule | null = null // React Native
 
-// Load Sentry SDK based on platform
-// Note: @sentry/react-native works on all platforms including web (via React Native Web)
-// Note: Errors during SDK loading are logged in initialize() method, not at module load time
-try {
-  SentryRN = require("@sentry/react-native")
-} catch (error) {
-  // SDK loading failed - will be logged during initialization
-  // Using console here since logger might not be ready during module load
-  if (__DEV__) {
-    console.warn("Failed to load @sentry/react-native. Will use mock if DSN is missing.", error)
+const loadSentryRN = (): SentryModule | null => {
+  if (SentryRN) return SentryRN
+  try {
+    // Lazy-load SDK to avoid import side effects in tests and non-Sentry environments.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    SentryRN = require("@sentry/react-native")
+    return SentryRN
+  } catch (error) {
+    logger.error(
+      "Sentry React Native SDK not available. Make sure @sentry/react-native is installed",
+      {},
+      error as Error,
+    )
+    return null
   }
 }
 
@@ -75,18 +79,15 @@ class SentryService implements ErrorTrackingService {
     // Note: Sentry supports React 19 - see https://docs.sentry.io/platforms/javascript/guides/react/
     // @sentry/react-native works on web via React Native Web, but for production web-only apps,
     // consider using @sentry/react for better web-specific features
-    if (!SentryRN) {
-      logger.error(
-        "Sentry React Native SDK not available. Make sure @sentry/react-native is installed",
-        {},
-      )
+    const sdk = loadSentryRN()
+    if (!sdk) {
       return
     }
 
     try {
       const isWeb = Platform.OS === "web"
 
-      SentryRN.init({
+      sdk.init({
         dsn: sentryDsn,
         environment: config.environment || (__DEV__ ? "development" : "production"),
         release: config.release,
@@ -112,7 +113,7 @@ class SentryService implements ErrorTrackingService {
         enableNdk: isWeb ? false : (config.enableNdk ?? true),
       })
 
-      this.Sentry = SentryRN
+      this.Sentry = sdk
       this.initialized = true
 
       if (__DEV__) {

@@ -262,8 +262,9 @@ describe("Subscription Flow Integration", () => {
       ;(revenueCatService.revenueCat.purchasePackage as jest.Mock).mockReturnValue(purchasePromise)
 
       // Start purchase
-      const purchasePromiseResult = act(async () => {
-        await result.current.purchasePackage(mockPackages[0])
+      let purchasePromiseResult: Promise<{ error?: Error }> | undefined
+      act(() => {
+        purchasePromiseResult = result.current.purchasePackage(mockPackages[0])
       })
 
       // Loading should be true
@@ -277,7 +278,10 @@ describe("Subscription Flow Integration", () => {
         error: null,
       })
 
-      await purchasePromiseResult
+      expect(purchasePromiseResult).toBeDefined()
+      await act(async () => {
+        await purchasePromiseResult!
+      })
 
       // Loading should be false
       await waitFor(() => {

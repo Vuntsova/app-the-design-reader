@@ -234,6 +234,7 @@ export function App() {
       deferredInitialization.cancel()
       // Clean up notification listeners to prevent memory leaks
       useNotificationStore.getState().cleanup()
+      useSubscriptionStore.getState().cleanup()
     }
   }, [handleInitialEmailLink])
 

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import type {
   KeyboardAvoidingViewProps,
   LayoutChangeEvent,
@@ -127,7 +127,7 @@ function useAutoPreset(props: AutoScreenProps): {
   const scrollViewContentHeight = useRef<null | number>(null)
   const [scrollEnabled, setScrollEnabled] = useState(true)
 
-  function updateScrollState() {
+  const updateScrollState = useCallback(() => {
     if (scrollViewHeight.current === null || scrollViewContentHeight.current === null) return
 
     // check whether content fits the screen then toggle scroll state according to it
@@ -139,12 +139,11 @@ function useAutoPreset(props: AutoScreenProps): {
       }
     })()
 
-    // content is less than the size of the screen, so we can disable scrolling
-    if (scrollEnabled && contentFitsScreen) setScrollEnabled(false)
-
-    // content is greater than the size of the screen, so let's enable scrolling
-    if (!scrollEnabled && !contentFitsScreen) setScrollEnabled(true)
-  }
+    const shouldScrollBeEnabled = !contentFitsScreen
+    setScrollEnabled((currentState) =>
+      currentState === shouldScrollBeEnabled ? currentState : shouldScrollBeEnabled,
+    )
+  }, [percent, point])
 
   /**
    * @param {number} w - The width of the content.
@@ -166,8 +165,11 @@ function useAutoPreset(props: AutoScreenProps): {
     updateScrollState()
   }
 
-  // update scroll state on every render
-  if (preset === "auto") updateScrollState()
+  useEffect(() => {
+    if (preset === "auto") {
+      updateScrollState()
+    }
+  }, [preset, updateScrollState])
 
   return {
     scrollEnabled: preset === "auto" ? scrollEnabled : true,

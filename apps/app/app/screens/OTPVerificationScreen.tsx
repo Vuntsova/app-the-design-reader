@@ -66,6 +66,7 @@ export const OTPVerificationScreen = () => {
 
   // Track if we've already attempted verification to prevent double-submit
   const verificationAttempted = useRef(false)
+  const resendSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Redirect if no email provided
   useEffect(() => {
@@ -84,6 +85,14 @@ export const OTPVerificationScreen = () => {
     }
     return undefined
   }, [countdown])
+
+  useEffect(() => {
+    return () => {
+      if (resendSuccessTimeoutRef.current) {
+        clearTimeout(resendSuccessTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // Handle OTP verification
   const handleVerify = useCallback(
@@ -158,7 +167,13 @@ export const OTPVerificationScreen = () => {
           setCode("")
           verificationAttempted.current = false
           // Clear success message after duration
-          setTimeout(() => setResendSuccess(false), TIMING.SUCCESS_MESSAGE_DURATION)
+          if (resendSuccessTimeoutRef.current) {
+            clearTimeout(resendSuccessTimeoutRef.current)
+          }
+          resendSuccessTimeoutRef.current = setTimeout(() => {
+            setResendSuccess(false)
+            resendSuccessTimeoutRef.current = null
+          }, TIMING.SUCCESS_MESSAGE_DURATION)
         }
       }
     } catch (err) {

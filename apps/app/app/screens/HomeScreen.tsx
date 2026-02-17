@@ -36,7 +36,8 @@ export const HomeScreen: FC<HomeScreenProps> = function HomeScreen(_props) {
   const { navigation } = _props
   const { theme } = useUnistyles()
   const { user } = useAuth()
-  const { isPushEnabled, togglePush } = useNotificationStore()
+  const isPushEnabled = useNotificationStore((state) => state.isPushEnabled)
+  const togglePush = useNotificationStore((state) => state.togglePush)
   const insets = useSafeAreaInsets()
   const { width: windowWidth } = useWindowDimensions()
 

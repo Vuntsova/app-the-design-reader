@@ -36,6 +36,7 @@ export const EmailVerificationScreen = () => {
 
   // Track when resend was last called to pause polling briefly
   const resendTimestampRef = useRef<number>(0)
+  const resendSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Use polling hook
   const { checkingStatus } = useEmailVerificationPolling({
@@ -72,6 +73,14 @@ export const EmailVerificationScreen = () => {
     return undefined
   }, [countdown])
 
+  useEffect(() => {
+    return () => {
+      if (resendSuccessTimeoutRef.current) {
+        clearTimeout(resendSuccessTimeoutRef.current)
+      }
+    }
+  }, [])
+
   const handleResendEmail = async () => {
     if (countdown > 0 || !email) return
 
@@ -92,7 +101,13 @@ export const EmailVerificationScreen = () => {
         // Start countdown
         setCountdown(TIMING.COUNTDOWN_RESEND_EMAIL)
         // Clear success message after duration
-        setTimeout(() => setResendSuccess(false), TIMING.SUCCESS_MESSAGE_DURATION)
+        if (resendSuccessTimeoutRef.current) {
+          clearTimeout(resendSuccessTimeoutRef.current)
+        }
+        resendSuccessTimeoutRef.current = setTimeout(() => {
+          setResendSuccess(false)
+          resendSuccessTimeoutRef.current = null
+        }, TIMING.SUCCESS_MESSAGE_DURATION)
       }
     } catch (err) {
       // Handle any unexpected errors

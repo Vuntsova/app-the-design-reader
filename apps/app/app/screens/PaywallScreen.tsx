@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState } from "react"
+import { useEffect, useCallback, useRef, useState } from "react"
 import { View, Platform, ActivityIndicator, ScrollView, Pressable } from "react-native"
 import { RouteProp, useRoute } from "@react-navigation/native"
 import { useTranslation } from "react-i18next"
@@ -73,6 +73,7 @@ export const PaywallScreen = () => {
   const [hasAutoPresented, setHasAutoPresented] = useState(false)
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null)
   const [isRestoring, setIsRestoring] = useState(false)
+  const restoreMessageTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [restoreMessage, setRestoreMessage] = useState<{
     type: "success" | "error"
     text: string
@@ -87,6 +88,24 @@ export const PaywallScreen = () => {
   const bottomPadding = Math.max(bottom, 20) + TAB_BAR_HEIGHT
 
   const isFromOnboarding = route.params?.fromOnboarding === true
+
+  const scheduleRestoreMessageClear = useCallback(() => {
+    if (restoreMessageTimeoutRef.current) {
+      clearTimeout(restoreMessageTimeoutRef.current)
+    }
+    restoreMessageTimeoutRef.current = setTimeout(() => {
+      setRestoreMessage(null)
+      restoreMessageTimeoutRef.current = null
+    }, 3000)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (restoreMessageTimeoutRef.current) {
+        clearTimeout(restoreMessageTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // Navigate to Main after successful purchase or skip
   const navigateToMain = useCallback(() => {
@@ -286,15 +305,15 @@ export const PaywallScreen = () => {
       }
 
       // Auto-hide message after 3 seconds
-      setTimeout(() => setRestoreMessage(null), 3000)
+      scheduleRestoreMessageClear()
     } catch (err) {
       logger.error("Restore purchases failed", { error: err })
       setRestoreMessage({ type: "error", text: "Failed to restore purchases. Please try again." })
-      setTimeout(() => setRestoreMessage(null), 3000)
+      scheduleRestoreMessageClear()
     } finally {
       setIsRestoring(false)
     }
-  }, [])
+  }, [scheduleRestoreMessageClear])
 
   return (
     <Container safeAreaEdges={["top"]}>

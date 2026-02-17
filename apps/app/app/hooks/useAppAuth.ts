@@ -32,6 +32,7 @@
 import { useCallback, useMemo } from "react"
 
 import { isConvex } from "../config/env"
+import type { AuthState } from "../stores/auth/authTypes"
 
 // ============================================================================
 // Types - Unified User Interface
@@ -130,7 +131,13 @@ function useSupabaseAppAuth(): AppAuthState & AppAuthActions {
   const { useAuthStore } = require("../stores/auth")
 
   const auth = useSupabaseAuth()
-  const store = useAuthStore()
+  const storeLoading = useAuthStore((state: AuthState) => state.loading)
+  const hasCompletedOnboarding = useAuthStore((state: AuthState) => state.hasCompletedOnboarding)
+  const setStoreUser = useAuthStore((state: AuthState) => state.setUser)
+  const setStoreHasCompletedOnboarding = useAuthStore(
+    (state: AuthState) => state.setHasCompletedOnboarding,
+  )
+  const initializeStore = useAuthStore((state: AuthState) => state.initialize)
 
   // Transform Supabase user to unified AppUser
   const user: AppUser | null = useMemo(() => {
@@ -184,7 +191,7 @@ function useSupabaseAppAuth(): AppAuthState & AppAuthActions {
         if (data.bio !== undefined) updatedMetadata.bio = data.bio
 
         // Optimistic update
-        if (user && store.setUser) {
+        if (user) {
           const optimisticUser = {
             ...auth.user,
             user_metadata: {
@@ -192,7 +199,7 @@ function useSupabaseAppAuth(): AppAuthState & AppAuthActions {
               ...updatedMetadata,
             },
           }
-          store.setUser(optimisticUser)
+          setStoreUser(optimisticUser)
         }
 
         // Update auth user metadata
@@ -234,28 +241,28 @@ function useSupabaseAppAuth(): AppAuthState & AppAuthActions {
         return { error: err as Error }
       }
     },
-    [auth.user, user, store],
+    [auth.user, user, setStoreUser],
   )
 
   const completeOnboarding = useCallback(async (): Promise<{ error: Error | null }> => {
     try {
-      await store.setHasCompletedOnboarding(true)
+      await setStoreHasCompletedOnboarding(true)
       return { error: null }
     } catch (err) {
       return { error: err as Error }
     }
-  }, [store])
+  }, [setStoreHasCompletedOnboarding])
 
   const setUser = useCallback(
     (newUser: AppUser | null) => {
       if (!newUser) {
-        store.setUser(null)
+        setStoreUser(null)
         return
       }
 
       // Transform AppUser back to Supabase user format for the store
       if (auth.user) {
-        store.setUser({
+        setStoreUser({
           ...auth.user,
           user_metadata: {
             ...auth.user.user_metadata,
@@ -268,21 +275,21 @@ function useSupabaseAppAuth(): AppAuthState & AppAuthActions {
         })
       }
     },
-    [auth.user, store],
+    [auth.user, setStoreUser],
   )
 
   const initialize = useCallback(async () => {
-    await store.initialize()
-  }, [store])
+    await initializeStore()
+  }, [initializeStore])
 
   return {
     // State
     isAuthenticated: auth.isAuthenticated,
-    isLoading: auth.isLoading || store.loading,
+    isLoading: auth.isLoading || storeLoading,
     user,
     userId: auth.userId,
     isEmailVerified: auth.isEmailVerified,
-    hasCompletedOnboarding: store.hasCompletedOnboarding,
+    hasCompletedOnboarding,
     provider: "supabase",
     // Actions
     signIn: auth.signInWithPassword,

@@ -22,6 +22,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Logic + Performance Hardening (Audit pass)**:
+  - Fixed duplicate RevenueCat subscription listeners by cleaning up old listeners before re-initialization and adding explicit store cleanup
+  - Lazy-loaded Sentry SDK during initialization to prevent module-load side effects and Jest open-handle warnings
+  - Removed render-phase state updates in `Screen` auto preset to avoid rerender churn
+  - Added timer/animation cleanup in paywall, email/OTP verification, and loading screen flows to prevent unmount leaks
+  - Reduced unnecessary rerenders by switching key auth/profile/home subscriptions to selector-based Zustand usage
+  - Fixed async `act` usage in subscription integration tests
+
 - **Setup Wizard BackendProvider Cleanup**: Fixed "Property 'ConvexProviderWrapper' doesn't exist" error when using Supabase
   - **Issue:** After running `yarn setup` and selecting Supabase as backend, the app would crash with a render error
   - **Root Cause:** The setup script removed the `ConvexProviderWrapper` function definition but didn't remove the JSX usage of `<ConvexProviderWrapper>` in the return statement
