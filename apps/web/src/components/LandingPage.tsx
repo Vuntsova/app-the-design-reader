@@ -46,6 +46,13 @@ type AiTool = {
     tagline: string
 }
 
+type ChangelogItem = {
+    date: string
+    version: string
+    title: string
+    highlights: string[]
+}
+
 const aiTools: AiTool[] = [
     {
         name: 'GitHub Copilot',
@@ -175,6 +182,39 @@ const bentoTiles: BentoTile[] = [
         points: [
             'Generate components and screens in seconds',
             'E2E-ready with Jest and Maestro samples',
+        ],
+    },
+]
+
+const changelogItems: ChangelogItem[] = [
+    {
+        date: 'February 17, 2026',
+        version: 'v0.9.6',
+        title: 'Audit hardening release',
+        highlights: [
+            'Hardened OAuth callback handling with explicit state validation',
+            'Improved secure token/session handling behavior for web auth flows',
+            'Added stricter external URL allowlisting for browser link helpers',
+        ],
+    },
+    {
+        date: 'February 17, 2026',
+        version: 'v0.9.5',
+        title: 'Auth logic and stability fixes',
+        highlights: [
+            'Fixed Convex + Supabase auth initialization conflict in unified auth mode',
+            'Aligned auth imports across screens to use the unified auth entrypoint',
+            'Cleaned up auth-related hook dependencies to prevent state edge cases',
+        ],
+    },
+    {
+        date: 'February 17, 2026',
+        version: 'v0.9.4',
+        title: 'Performance improvements',
+        highlights: [
+            'Memoized list rows and stabilized callbacks in data demo flows',
+            'Reduced avoidable rerenders in navigation-heavy UI paths',
+            'Removed non-essential debug logs from render-sensitive areas',
         ],
     },
 ]
@@ -547,6 +587,48 @@ export function LandingPage({
                                     )}
                                 </div>
                             </div>
+                        ))}
+                    </div>
+                </section>
+
+                {/* Changelog */}
+                <section className="mt-24 space-y-10">
+                    <div className="text-center space-y-4">
+                        <h2 className="text-3xl lg:text-4xl font-bold text-slate-900">
+                            Latest changelog
+                        </h2>
+                        <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+                            The most recent shipping updates to security, logic, and performance.
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {changelogItems.map((entry) => (
+                            <article
+                                key={`${entry.version}-${entry.title}`}
+                                className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6"
+                            >
+                                <div className="flex items-center justify-between gap-3 mb-4">
+                                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                                        {entry.date}
+                                    </span>
+                                    <span className="px-3 py-1 rounded-full bg-slate-900 text-white text-[11px] font-bold uppercase tracking-wide">
+                                        {entry.version}
+                                    </span>
+                                </div>
+                                <h3 className="text-lg font-bold text-slate-900 mb-4">{entry.title}</h3>
+                                <ul className="space-y-2">
+                                    {entry.highlights.map((highlight) => (
+                                        <li
+                                            key={highlight}
+                                            className="text-sm text-slate-600 leading-relaxed flex items-start gap-2"
+                                        >
+                                            <span className="mt-2 h-1.5 w-1.5 rounded-full bg-slate-400 shrink-0" />
+                                            <span>{highlight}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </article>
                         ))}
                     </div>
                 </section>
