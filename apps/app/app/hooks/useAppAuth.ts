@@ -517,14 +517,12 @@ function useConvexAppAuth(): AppAuthState & AppAuthActions {
  * }
  * ```
  */
-export function useAuth(): AppAuthState & AppAuthActions {
-  // Call both hooks unconditionally to satisfy React's rules of hooks
-  // The unused hook's state will be ignored
-  const convexAuth = useConvexAppAuth()
-  const supabaseAuth = useSupabaseAppAuth()
+const useSelectedAuthHook: () => AppAuthState & AppAuthActions = isConvex
+  ? useConvexAppAuth
+  : useSupabaseAppAuth
 
-  // Return the appropriate auth based on backend config
-  return isConvex ? convexAuth : supabaseAuth
+export function useAuth(): AppAuthState & AppAuthActions {
+  return useSelectedAuthHook()
 }
 
 /**

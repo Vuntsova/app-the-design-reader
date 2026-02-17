@@ -106,7 +106,7 @@ export const OTPInput = ({
         inputRefs.current[indexToFocus]?.focus()
       }, 100)
     }
-  }, [autoFocus, disabled])
+  }, [autoFocus, digits, disabled, length])
 
   // Call onComplete when all digits are filled
   useEffect(() => {

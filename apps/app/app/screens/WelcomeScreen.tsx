@@ -7,7 +7,7 @@ import { Divider } from "@/components/Divider"
 import { AuthScreenLayout } from "@/components/layouts/AuthScreenLayout"
 import { Text } from "@/components/Text"
 import { features } from "@/config/features"
-import { useAuth } from "@/hooks/useAuth"
+import { useAuth } from "@/hooks"
 import type { AppStackScreenProps } from "@/navigators/navigationTypes"
 
 // =============================================================================
@@ -23,18 +23,7 @@ interface WelcomeScreenProps extends AppStackScreenProps<"Welcome"> {}
 export const WelcomeScreen: FC<WelcomeScreenProps> = function WelcomeScreen(_props) {
   const { navigation } = _props
   const { theme } = useUnistyles()
-
-  // DEBUG: Log when component renders
-  if (__DEV__) {
-    console.log("[WelcomeScreen] Component rendering, about to call useAuth")
-  }
-
-  const { signInWithGoogle, signInWithApple, loading } = useAuth()
-
-  // DEBUG: Log after useAuth
-  if (__DEV__) {
-    console.log("[WelcomeScreen] useAuth returned successfully", { loading })
-  }
+  const { signInWithGoogle, signInWithApple, isLoading } = useAuth()
 
   const handleGoToLogin = () => {
     navigation.navigate("Login" as never)
@@ -66,11 +55,6 @@ export const WelcomeScreen: FC<WelcomeScreenProps> = function WelcomeScreen(_pro
     }
   }
 
-  // DEBUG: Log all children
-  if (__DEV__) {
-    console.log("[WelcomeScreen] About to render AuthScreenLayout")
-  }
-
   return (
     <AuthScreenLayout
       title="Get Started"
@@ -83,7 +67,7 @@ export const WelcomeScreen: FC<WelcomeScreenProps> = function WelcomeScreen(_pro
         style={styles.primaryButton}
         onPress={handleGoToRegister}
         activeOpacity={0.8}
-        disabled={loading}
+        disabled={isLoading}
       >
         <Text weight="semiBold" style={styles.primaryButtonText}>
           Create Account
@@ -95,7 +79,7 @@ export const WelcomeScreen: FC<WelcomeScreenProps> = function WelcomeScreen(_pro
         style={styles.secondaryButton}
         onPress={handleGoToLogin}
         activeOpacity={0.8}
-        disabled={loading}
+        disabled={isLoading}
       >
         <Text weight="semiBold" style={styles.secondaryButtonText}>
           Sign In
@@ -114,7 +98,7 @@ export const WelcomeScreen: FC<WelcomeScreenProps> = function WelcomeScreen(_pro
                 style={styles.socialButton}
                 onPress={handleAppleAuth}
                 activeOpacity={0.8}
-                disabled={loading}
+                disabled={isLoading}
               >
                 <Ionicons name="logo-apple" size={24} color={theme.colors.foreground} />
                 <Text weight="semiBold">Apple</Text>
@@ -126,7 +110,7 @@ export const WelcomeScreen: FC<WelcomeScreenProps> = function WelcomeScreen(_pro
                 style={styles.socialButton}
                 onPress={handleGoogleAuth}
                 activeOpacity={0.8}
-                disabled={loading}
+                disabled={isLoading}
               >
                 <Ionicons name="logo-google" size={24} color={theme.colors.foreground} />
                 <Text weight="semiBold">Google</Text>

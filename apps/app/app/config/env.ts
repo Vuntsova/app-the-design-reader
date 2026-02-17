@@ -79,6 +79,8 @@ const EnvSchema = z
     // Optional flags
     enableWidgets: z.boolean().default(false),
     useMockNotifications: z.boolean().default(false),
+    enableCertificatePinning: z.boolean().default(false),
+    certificatePins: z.string().optional(),
     emailRedirectUrl: z.string().url().optional(),
     passwordResetRedirectUrl: z.string().url().optional(),
 
@@ -114,6 +116,14 @@ const EnvSchema = z
         })
       }
     }
+
+    if (values.enableCertificatePinning && !values.certificatePins) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "certificatePins is required in production when enableCertificatePinning is true",
+        path: ["certificatePins"],
+      })
+    }
   })
 
 export type EnvConfig = z.infer<typeof EnvSchema>
@@ -142,6 +152,8 @@ const envInput: Partial<EnvConfig> = {
   appleTeamId: readStringEnv("apple_team_id"),
   enableWidgets: readBooleanEnv("enable_widgets"),
   useMockNotifications: readBooleanEnv("use_mock_notifications"),
+  enableCertificatePinning: readBooleanEnv("enable_certificate_pinning"),
+  certificatePins: readStringEnv("certificate_pins"),
   emailRedirectUrl: readStringEnv("email_redirect_url"),
   passwordResetRedirectUrl: readStringEnv("password_reset_redirect_url"),
   appEnv: resolvedAppEnv,
@@ -160,6 +172,7 @@ const env: EnvConfig = parsedEnv.success
       posthogHost: envInput.posthogHost || "https://app.posthog.com",
       enableWidgets: envInput.enableWidgets ?? false,
       useMockNotifications: envInput.useMockNotifications ?? false,
+      enableCertificatePinning: envInput.enableCertificatePinning ?? false,
     }
 
 const validationIssues = parsedEnv.success ? [] : parsedEnv.error.issues

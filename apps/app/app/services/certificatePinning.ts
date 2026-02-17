@@ -1,48 +1,51 @@
 /**
- * Certificate Pinning Service
+ * Certificate pinning configuration service.
  *
- * SECURITY: Certificate pinning prevents MITM attacks by verifying
- * that the server's certificate matches a known public key.
- *
- * Note: This is a placeholder implementation. For production, you should:
- * 1. Install a certificate pinning library (e.g., react-native-cert-pinner)
- * 2. Configure your API domain's certificate public key hashes
- * 3. Enable pinning in production builds
+ * Configure pins with:
+ * EXPO_PUBLIC_ENABLE_CERTIFICATE_PINNING=true
+ * EXPO_PUBLIC_CERTIFICATE_PINS={"api.example.com":["sha256/...","sha256/..."]}
  */
 
+import { env, isProduction } from "../config/env"
 import { logger } from "../utils/Logger"
 
-/**
- * Certificate pin configuration
- * Add your API domain's certificate public key hashes here
- * Format: SHA256 hash of the certificate's public key
- *
- * To get the hash:
- * openssl s_client -servername your-domain.com -connect your-domain.com:443 < /dev/null | \
- *   openssl x509 -pubkey -noout | \
- *   openssl pkey -pubin -outform der | \
- *   openssl dgst -sha256 -binary | \
- *   openssl enc -base64
- */
-const CERTIFICATE_PINS: Record<string, string[]> = {
-  // Example: Add your Supabase domain
-  // "your-project.supabase.co": [
-  //   "sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", // Primary cert
-  //   "sha256/BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=", // Backup cert
-  // ],
+type PinConfig = Record<string, string[]>
+
+function parseCertificatePins(rawPins: string | undefined): PinConfig {
+  if (!rawPins) return {}
+
+  try {
+    const parsed = JSON.parse(rawPins) as unknown
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {}
+    }
+
+    return Object.fromEntries(
+      Object.entries(parsed)
+        .filter((entry): entry is [string, unknown] => typeof entry[0] === "string")
+        .map(([domain, value]) => {
+          const pins = Array.isArray(value)
+            ? value.filter((pin): pin is string => typeof pin === "string" && pin.length > 0)
+            : []
+          return [domain, pins]
+        })
+        .filter(([, pins]) => pins.length > 0),
+    )
+  } catch {
+    return {}
+  }
 }
 
-/**
- * Check if certificate pinning is enabled
- */
+const CERTIFICATE_PINS = parseCertificatePins(env.certificatePins)
+
 export function isCertificatePinningEnabled(): boolean {
-  // Only enable in production
-  return !__DEV__ && Object.keys(CERTIFICATE_PINS).length > 0
+  return isProduction && env.enableCertificatePinning
 }
 
-/**
- * Get certificate pins for a domain
- */
+export function isCertificatePinningConfigured(): boolean {
+  return Object.keys(CERTIFICATE_PINS).length > 0
+}
+
 export function getCertificatePins(domain: string): string[] | null {
   return CERTIFICATE_PINS[domain] || null
 }
@@ -63,36 +66,21 @@ function normalizeCertificateHash(hash: string): string {
 
 function extractCertificateHash(certificate: CertificateHashSource): string | null {
   if (!certificate) return null
-
-  if (typeof certificate === "string") {
-    return certificate
-  }
-
+  if (typeof certificate === "string") return certificate
   return certificate.publicKeyHash || certificate.certificateHash || certificate.hash || null
 }
 
-/**
- * Validate certificate pin.
- *
- * In production, this should:
- * 1. Extract the certificate from the connection
- * 2. Calculate its public key hash
- * 3. Compare against known pins
- * 4. Reject connection if no match
- */
 export async function validateCertificatePin(
   domain: string,
-  certificate: CertificateHashSource, // Certificate object or hash from pinning library
+  certificate: CertificateHashSource,
 ): Promise<boolean> {
   if (!isCertificatePinningEnabled()) {
-    return true // Skip validation in development
+    return true
   }
 
   const pins = getCertificatePins(domain)
   if (!pins || pins.length === 0) {
-    logger.error("[CertificatePinning] Pinning enabled but no pins configured for domain", {
-      domain,
-    })
+    logger.error("[CertificatePinning] Missing certificate pins for domain", { domain })
     return false
   }
 
@@ -104,38 +92,35 @@ export async function validateCertificatePin(
 
   const normalizedHash = normalizeCertificateHash(certificateHash)
   const matches = pins.some((pin) => normalizeCertificateHash(pin) === normalizedHash)
-
   if (!matches) {
     logger.error("[CertificatePinning] Certificate hash mismatch", { domain })
   }
-
   return matches
 }
 
-/**
- * Initialize certificate pinning
- * Call this during app initialization
- */
 export function initializeCertificatePinning(): void {
-  if (isCertificatePinningEnabled()) {
-    logger.info("[CertificatePinning] Certificate pinning enabled", {
-      domains: Object.keys(CERTIFICATE_PINS),
-    })
-  } else {
+  if (!isCertificatePinningEnabled()) {
     if (__DEV__) {
-      logger.debug("[CertificatePinning] Certificate pinning disabled (development mode)")
-    } else {
-      logger.warn("[CertificatePinning] Certificate pinning disabled - no pins configured")
+      logger.debug("[CertificatePinning] Disabled")
     }
+    return
   }
+
+  if (!isCertificatePinningConfigured()) {
+    logger.error(
+      "[CertificatePinning] Enabled in production but EXPO_PUBLIC_CERTIFICATE_PINS is missing or invalid",
+    )
+    return
+  }
+
+  logger.info("[CertificatePinning] Enabled", {
+    domains: Object.keys(CERTIFICATE_PINS),
+  })
 }
 
-/**
- * Certificate pinning configuration helper
- * Use this to add certificate pins for your API domains
- */
 export const certificatePinning = {
   isEnabled: isCertificatePinningEnabled,
+  isConfigured: isCertificatePinningConfigured,
   getPins: getCertificatePins,
   validate: validateCertificatePin,
   initialize: initializeCertificatePinning,

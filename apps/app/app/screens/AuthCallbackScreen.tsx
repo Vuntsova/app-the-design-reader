@@ -7,18 +7,23 @@ import { StyleSheet } from "react-native-unistyles"
 import { AuthScreenLayout } from "@/components/layouts/AuthScreenLayout"
 import { Text } from "@/components/Text"
 import { isConvex, isSupabase } from "@/config/env"
-import { useAuth as _useAuth } from "@/hooks"
 import type { AppStackParamList, AppStackScreenProps } from "@/navigators/navigationTypes"
 import { LoadingScreen } from "@/screens/LoadingScreen"
 import { useAuthStore } from "@/stores/auth"
 import { formatAuthError } from "@/utils/formatAuthError"
 import { logger } from "@/utils/Logger"
+import { consumeOAuthState, hasPendingOAuthState } from "@/utils/oauthState"
 
 /**
  * Parse OAuth tokens from URL hash fragment (web only)
  * Supabase OAuth returns tokens in the hash: #access_token=...&refresh_token=...
  */
-function getHashParams(): { access_token?: string; refresh_token?: string; code?: string } {
+function getHashParams(): {
+  access_token?: string
+  refresh_token?: string
+  code?: string
+  state?: string
+} {
   if (Platform.OS !== "web" || typeof window === "undefined") {
     return {}
   }
@@ -41,7 +46,12 @@ function getHashParams(): { access_token?: string; refresh_token?: string; code?
  * Parse OAuth code from URL query params (web only)
  * Convex OAuth returns code in query: ?code=...
  */
-function getQueryParams(): { code?: string; error?: string; error_description?: string } {
+function getQueryParams(): {
+  code?: string
+  state?: string
+  error?: string
+  error_description?: string
+} {
   if (Platform.OS !== "web" || typeof window === "undefined") {
     return {}
   }
@@ -52,6 +62,7 @@ function getQueryParams(): { code?: string; error?: string; error_description?: 
   const params = new URLSearchParams(search)
   return {
     code: params.get("code") ?? undefined,
+    state: params.get("state") ?? undefined,
     error: params.get("error") ?? undefined,
     error_description: params.get("error_description") ?? undefined,
   }
@@ -69,6 +80,7 @@ export const AuthCallbackScreen = () => {
   const code = route.params?.code ?? hashParams.code ?? queryParams.code
   const accessToken = route.params?.access_token ?? hashParams.access_token
   const refreshToken = route.params?.refresh_token ?? hashParams.refresh_token
+  const oauthState = route.params?.state ?? hashParams.state ?? queryParams.state
   const oauthError = queryParams.error
   const oauthErrorDescription = queryParams.error_description
 
@@ -130,6 +142,13 @@ export const AuthCallbackScreen = () => {
         // Supabase OAuth Callback Handling
         // ================================================================
         if (isSupabase) {
+          if (hasPendingOAuthState()) {
+            const isValidState = consumeOAuthState(oauthState)
+            if (!isValidState) {
+              throw new Error("Invalid OAuth callback state. Please try signing in again.")
+            }
+          }
+
           // Dynamic import to avoid loading Supabase in Convex builds
           const { supabase } = await import("@/services/supabase")
 
@@ -205,7 +224,7 @@ export const AuthCallbackScreen = () => {
     return () => {
       isMounted = false
     }
-  }, [code, accessToken, refreshToken, oauthError, oauthErrorDescription, t])
+  }, [code, accessToken, refreshToken, oauthError, oauthErrorDescription, oauthState, t])
 
   if (!errorMessage) {
     return (

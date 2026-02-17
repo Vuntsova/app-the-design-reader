@@ -10,7 +10,7 @@
  * Copy this pattern for your own data-fetching screens with Supabase.
  */
 
-import { FC, useState } from "react"
+import { FC, memo, useCallback, useState } from "react"
 import { View, FlatList } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
@@ -31,6 +31,49 @@ interface Post {
   author_id: string
   created_at: string
 }
+
+interface PostListItemProps {
+  item: Post
+  currentUserId: string | null
+  onDelete: (postId: string) => void
+  deleteColor: string
+}
+
+const PostListItem = memo(function PostListItem({
+  item,
+  currentUserId,
+  onDelete,
+  deleteColor,
+}: PostListItemProps) {
+  return (
+    <Card
+      style={styles.postCard}
+      ContentComponent={
+        <>
+          <View style={styles.postHeader}>
+            <Text preset="subheading" style={styles.postTitle}>
+              {item.title}
+            </Text>
+            {item.author_id === currentUserId && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onPress={() => onDelete(item.id)}
+                LeftAccessory={() => (
+                  <Ionicons name="trash-outline" size={16} color={deleteColor} />
+                )}
+              />
+            )}
+          </View>
+          <Text style={styles.postContent}>{item.content}</Text>
+          <Text preset="caption" style={styles.postDate}>
+            {new Date(item.created_at).toLocaleDateString()}
+          </Text>
+        </>
+      }
+    />
+  )
+})
 
 // =============================================================================
 // DATA FETCHING WITH REACT QUERY + SUPABASE
@@ -150,7 +193,7 @@ export const DataDemoScreen: FC = () => {
   const createPost = useCreatePost()
   const deletePost = useDeletePost()
 
-  const handleCreatePost = async () => {
+  const handleCreatePost = useCallback(async () => {
     if (!title.trim() || !content.trim()) return
 
     try {
@@ -160,36 +203,32 @@ export const DataDemoScreen: FC = () => {
     } catch {
       // Error handled by React Query
     }
-  }
+  }, [content, createPost, title])
 
-  const renderPost = ({ item }: { item: Post }) => (
-    <Card
-      style={styles.postCard}
-      ContentComponent={
-        <>
-          <View style={styles.postHeader}>
-            <Text preset="subheading" style={styles.postTitle}>
-              {item.title}
-            </Text>
-            {item.author_id === user?.id && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onPress={() => deletePost.mutate(item.id)}
-                LeftAccessory={() => (
-                  <Ionicons name="trash-outline" size={16} color={theme.colors.error} />
-                )}
-              />
-            )}
-          </View>
-          <Text style={styles.postContent}>{item.content}</Text>
-          <Text preset="caption" style={styles.postDate}>
-            {new Date(item.created_at).toLocaleDateString()}
-          </Text>
-        </>
-      }
-    />
+  const handleDeletePost = useCallback(
+    (postId: string) => {
+      deletePost.mutate(postId)
+    },
+    [deletePost],
   )
+
+  const keyExtractor = useCallback((item: Post) => item.id, [])
+
+  const renderPost = useCallback(
+    ({ item }: { item: Post }) => (
+      <PostListItem
+        item={item}
+        currentUserId={user?.id ?? null}
+        onDelete={handleDeletePost}
+        deleteColor={theme.colors.error}
+      />
+    ),
+    [handleDeletePost, theme.colors.error, user?.id],
+  )
+
+  const handleRefresh = useCallback(() => {
+    void refetch()
+  }, [refetch])
 
   if (isLoading) {
     return (
@@ -211,7 +250,7 @@ export const DataDemoScreen: FC = () => {
             heading="Failed to load posts"
             content={error.message}
             button="Retry"
-            buttonOnPress={() => refetch()}
+            buttonOnPress={handleRefresh}
           />
         </View>
       </Screen>
@@ -265,10 +304,10 @@ export const DataDemoScreen: FC = () => {
         {/* Posts List */}
         <FlatList
           data={posts}
-          keyExtractor={(item) => item.id}
+          keyExtractor={keyExtractor}
           renderItem={renderPost}
           contentContainerStyle={styles.listContent}
-          onRefresh={() => refetch()}
+          onRefresh={handleRefresh}
           refreshing={isRefetching}
           ListEmptyComponent={
             <EmptyState

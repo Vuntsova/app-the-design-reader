@@ -17,7 +17,6 @@ import { ErrorBoundary } from "@/screens/ErrorScreen/ErrorBoundary"
 import { useAuthStore } from "@/stores"
 import type { AuthState } from "@/stores/auth/authTypes"
 import { webDimension } from "@/types/webStyles"
-import { logger } from "@/utils/Logger"
 
 import { MainTabNavigator } from "./MainTabNavigator"
 import type { AppStackParamList, NavigationProps } from "./navigationTypes"
@@ -48,17 +47,6 @@ const AppStack = () => {
   // Track previous state to detect transitions
   const prevNeedsEmailVerificationRef = useRef(needsEmailVerification)
   const prevIsAuthenticatedRef = useRef(isAuthenticated)
-
-  if (__DEV__) {
-    logger.debug("AppStack rendering", {
-      loading,
-      userStatus: user ? "Logged In" : "Guest",
-      isAuthenticated,
-      isEmailConfirmed,
-      hasCompletedOnboarding,
-      needsEmailVerification,
-    })
-  }
 
   // Handle navigation when state changes (e.g., login with unverified email, sign out)
   // MUST be called before any early returns to comply with React Hooks rules

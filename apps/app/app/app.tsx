@@ -104,6 +104,7 @@ const config = {
         code: (code: string) => code,
         access_token: (accessToken: string) => accessToken,
         refresh_token: (refreshToken: string) => refreshToken,
+        state: (state: string) => state,
         token: (token: string) => token,
         type: (type: string) => type,
       },

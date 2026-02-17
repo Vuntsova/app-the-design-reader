@@ -1,98 +1,118 @@
 /**
- * Web Storage Encryption Utility
+ * Web secure storage utility.
  *
- * Provides basic encryption for sensitive data stored in localStorage on web platform.
- * This is a defense-in-depth measure - sensitive data should ideally be stored server-side
- * or in secure HTTP-only cookies.
+ * For browser builds, sensitive auth values are stored in sessionStorage to
+ * avoid long-lived token persistence across browser restarts.
  *
- * Note: This uses a simple obfuscation method. For production apps handling highly
- * sensitive data, consider using a proper encryption library or storing data server-side.
+ * NOTE: Browser storage is still readable by JavaScript in the page context.
+ * For high-sensitivity apps, prefer server-managed sessions with HTTP-only cookies.
  */
 
+const PREFIX = "secure_"
+const LEGACY_KEY = "shipnative_secure_storage_key_2024"
+
+function getSessionStorage(): Storage | null {
+  if (typeof sessionStorage === "undefined") return null
+  try {
+    return sessionStorage
+  } catch {
+    return null
+  }
+}
+
+function getLocalStorage(): Storage | null {
+  if (typeof localStorage === "undefined") return null
+  try {
+    return localStorage
+  } catch {
+    return null
+  }
+}
+
+function safeBase64Decode(value: string): string | null {
+  try {
+    return atob(value)
+  } catch {
+    return null
+  }
+}
+
 /**
- * Simple obfuscation for web storage (not cryptographically secure, but better than plaintext)
- * For production apps with sensitive data, use proper encryption or server-side storage
+ * Legacy deobfuscation support for seamless migration from previous versions.
  */
-function obfuscate(data: string): string {
-  // Simple XOR obfuscation with a key derived from the data itself
-  // This is NOT cryptographically secure but provides basic obfuscation
-  const key = "shipnative_secure_storage_key_2024"
+function deobfuscateLegacyValue(obfuscated: string): string | null {
+  const decoded = safeBase64Decode(obfuscated)
+  if (!decoded) return null
+
   let result = ""
-  for (let i = 0; i < data.length; i++) {
-    const charCode = data.charCodeAt(i) ^ key.charCodeAt(i % key.length)
+  for (let i = 0; i < decoded.length; i += 1) {
+    const charCode = decoded.charCodeAt(i) ^ LEGACY_KEY.charCodeAt(i % LEGACY_KEY.length)
     result += String.fromCharCode(charCode)
   }
-  return btoa(result) // Base64 encode
+  return result
 }
 
-/**
- * De-obfuscate data
- */
-function deobfuscate(obfuscated: string): string {
-  try {
-    const data = atob(obfuscated) // Base64 decode
-    const key = "shipnative_secure_storage_key_2024"
-    let result = ""
-    for (let i = 0; i < data.length; i++) {
-      const charCode = data.charCodeAt(i) ^ key.charCodeAt(i % key.length)
-      result += String.fromCharCode(charCode)
-    }
-    return result
-  } catch {
-    throw new Error("Failed to deobfuscate data")
-  }
+function prefixed(key: string): string {
+  return `${PREFIX}${key}`
 }
 
-/**
- * Secure storage adapter for web platform
- * Encrypts sensitive data before storing in localStorage
- */
 export const webSecureStorage = {
-  /**
-   * Store encrypted value
-   */
   setItem(key: string, value: string): void {
+    const session = getSessionStorage()
+    const local = getLocalStorage()
+    const target = session ?? local
+    const storageKey = prefixed(key)
+
+    if (!target) return
+
     try {
-      if (typeof localStorage === "undefined") {
-        return
+      target.setItem(storageKey, value)
+      // If sessionStorage is available, avoid long-lived local persistence.
+      if (session) {
+        local?.removeItem(storageKey)
       }
-      const encrypted = obfuscate(value)
-      localStorage.setItem(`secure_${key}`, encrypted)
-    } catch (error) {
-      console.warn("[WebSecureStorage] Failed to store encrypted value", error)
+    } catch {
+      // Ignore write failures and keep app functional.
     }
   },
 
-  /**
-   * Retrieve and decrypt value
-   */
   getItem(key: string): string | null {
+    const session = getSessionStorage()
+    const local = getLocalStorage()
+    const storageKey = prefixed(key)
+
     try {
-      if (typeof localStorage === "undefined") {
-        return null
+      const primaryStorage = session ?? local
+      if (!primaryStorage) return null
+
+      const current = primaryStorage.getItem(storageKey)
+      if (current) return current
+
+      // Migration path from legacy localStorage obfuscation.
+      const legacy = local?.getItem(storageKey)
+      if (!legacy) return null
+
+      const migrated = deobfuscateLegacyValue(legacy) ?? legacy
+      primaryStorage.setItem(storageKey, migrated)
+      if (session) {
+        local?.removeItem(storageKey)
       }
-      const encrypted = localStorage.getItem(`secure_${key}`)
-      if (!encrypted) {
-        return null
-      }
-      return deobfuscate(encrypted)
-    } catch (error) {
-      console.warn("[WebSecureStorage] Failed to retrieve encrypted value", error)
+      return migrated
+    } catch {
       return null
     }
   },
 
-  /**
-   * Remove encrypted value
-   */
   removeItem(key: string): void {
+    const session = getSessionStorage()
+    const local = getLocalStorage()
+    const storageKey = prefixed(key)
+
     try {
-      if (typeof localStorage === "undefined") {
-        return
-      }
-      localStorage.removeItem(`secure_${key}`)
-    } catch (error) {
-      console.warn("[WebSecureStorage] Failed to remove encrypted value", error)
+      session?.removeItem(storageKey)
+      local?.removeItem(storageKey)
+    } catch {
+      // Ignore remove failures and keep app functional.
     }
   },
 }

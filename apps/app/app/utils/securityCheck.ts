@@ -34,17 +34,17 @@ export function runSecurityChecks(): SecurityCheckResult {
 
   // Check certificate pinning
   const pinningEnabled = certificatePinning.isEnabled()
-  const pinningConfigured = pinningEnabled
+  const pinningConfigured = certificatePinning.isConfigured()
 
   const result: SecurityCheckResult = {
     certificatePinning: {
       enabled: pinningEnabled,
       configured: pinningConfigured,
-      message: pinningEnabled
-        ? "Certificate pinning is enabled"
-        : isProduction
-          ? "⚠️ Certificate pinning is not configured - recommended for production"
-          : "Certificate pinning disabled (development mode)",
+      message: !pinningEnabled
+        ? "Certificate pinning disabled"
+        : pinningConfigured
+          ? "Certificate pinning is enabled and configured"
+          : "Certificate pinning enabled but no pins configured",
     },
     environment: {
       isProduction,
@@ -58,10 +58,13 @@ export function runSecurityChecks(): SecurityCheckResult {
   }
 
   // Determine overall status
-  if (isProduction && !pinningConfigured) {
+  if (isProduction && pinningEnabled && !pinningConfigured) {
+    result.overall.status = "error"
+    result.overall.message = "Certificate pinning is enabled but no certificate pins are configured"
+  } else if (isProduction && !pinningEnabled) {
     result.overall.status = "warning"
-    result.overall.message = "Production mode detected but certificate pinning not configured"
-  } else if (isProduction && pinningConfigured) {
+    result.overall.message = "Certificate pinning is disabled in production"
+  } else if (isProduction && pinningEnabled && pinningConfigured) {
     result.overall.status = "secure"
     result.overall.message = "All security checks passed"
   } else {

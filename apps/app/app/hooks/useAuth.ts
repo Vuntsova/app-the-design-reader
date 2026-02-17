@@ -26,6 +26,7 @@ import type {
   UpdateUserAttributes,
 } from "../types/auth"
 import { logger } from "../utils/Logger"
+import { clearOAuthState, consumeOAuthState, createOAuthState } from "../utils/oauthState"
 
 // ============================================================================
 // Web Browser Import (Platform-Specific)
@@ -121,15 +122,18 @@ function useSupabaseAuth(): UseAuthReturn {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const waitForSession = async (timeoutMs: number): Promise<Session | null> => {
-    const start = Date.now()
-    while (Date.now() - start < timeoutMs) {
-      const { data } = await supabase.auth.getSession()
-      if (data.session) return data.session
-      await new Promise((resolve) => setTimeout(resolve, 500))
-    }
-    return null
-  }
+  const waitForSession = useCallback(
+    async (timeoutMs: number): Promise<Session | null> => {
+      const start = Date.now()
+      while (Date.now() - start < timeoutMs) {
+        const { data } = await supabase.auth.getSession()
+        if (data.session) return data.session
+        await new Promise((resolve) => setTimeout(resolve, 500))
+      }
+      return null
+    },
+    [supabase.auth],
+  )
 
   // Initialize auth state
   useEffect(() => {
@@ -152,42 +156,54 @@ function useSupabaseAuth(): UseAuthReturn {
     })
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [supabase.auth])
 
-  const signUp = useCallback(async (credentials: SignUpCredentials) => {
-    setLoading(true)
-    const { error } = await supabase.auth.signUp(credentials)
-    setLoading(false)
-    return { error }
-  }, [])
+  const signUp = useCallback(
+    async (credentials: SignUpCredentials) => {
+      setLoading(true)
+      const { error } = await supabase.auth.signUp(credentials)
+      setLoading(false)
+      return { error }
+    },
+    [supabase.auth],
+  )
 
-  const signIn = useCallback(async (credentials: SignInCredentials) => {
-    setLoading(true)
-    const { error } = await supabase.auth.signInWithPassword(credentials)
-    setLoading(false)
-    return { error }
-  }, [])
+  const signIn = useCallback(
+    async (credentials: SignInCredentials) => {
+      setLoading(true)
+      const { error } = await supabase.auth.signInWithPassword(credentials)
+      setLoading(false)
+      return { error }
+    },
+    [supabase.auth],
+  )
 
   const signOut = useCallback(async () => {
     setLoading(true)
     const { error } = await supabase.auth.signOut({ scope: "local" })
     setLoading(false)
     return { error }
-  }, [])
+  }, [supabase.auth])
 
-  const resetPassword = useCallback(async (email: string) => {
-    setLoading(true)
-    const { error } = await supabase.auth.resetPasswordForEmail(email)
-    setLoading(false)
-    return { error }
-  }, [])
+  const resetPassword = useCallback(
+    async (email: string) => {
+      setLoading(true)
+      const { error } = await supabase.auth.resetPasswordForEmail(email)
+      setLoading(false)
+      return { error }
+    },
+    [supabase.auth],
+  )
 
-  const updateUser = useCallback(async (attributes: UpdateUserAttributes) => {
-    setLoading(true)
-    const { error } = await supabase.auth.updateUser(attributes)
-    setLoading(false)
-    return { error }
-  }, [])
+  const updateUser = useCallback(
+    async (attributes: UpdateUserAttributes) => {
+      setLoading(true)
+      const { error } = await supabase.auth.updateUser(attributes)
+      setLoading(false)
+      return { error }
+    },
+    [supabase.auth],
+  )
 
   const signInWithGoogle = useCallback(async () => {
     setLoading(true)
@@ -283,11 +299,13 @@ function useSupabaseAuth(): UseAuthReturn {
       if (__DEV__) {
         logger.debug("[useAuth] Google OAuth redirectTo", { redirectTo })
       }
+      const oauthState = createOAuthState()
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo,
+          queryParams: { state: oauthState },
           // On web, allow Supabase to redirect the browser directly to Google
           // On mobile, we handle the redirect ourselves via WebBrowser
           skipBrowserRedirect: Platform.OS !== "web",
@@ -295,6 +313,7 @@ function useSupabaseAuth(): UseAuthReturn {
       })
 
       if (error) {
+        clearOAuthState()
         return { error }
       }
 
@@ -326,6 +345,7 @@ function useSupabaseAuth(): UseAuthReturn {
             const accessTokenParam = getParam("access_token")
             const refreshToken = getParam("refresh_token")
             const code = getParam("code")
+            const state = getParam("state")
 
             if (__DEV__) {
               logger.debug("[useAuth] Google OAuth callback params", {
@@ -333,6 +353,10 @@ function useSupabaseAuth(): UseAuthReturn {
                 hasRefreshToken: !!refreshToken,
                 hasCode: !!code,
               })
+            }
+
+            if (!consumeOAuthState(state)) {
+              return { error: new Error("Invalid OAuth callback state") }
             }
 
             if (code) {
@@ -405,6 +429,7 @@ function useSupabaseAuth(): UseAuthReturn {
               }
             }
           } else if (result.type === "cancel") {
+            clearOAuthState()
             return { error: new Error("OAuth flow cancelled") }
           }
         } else {
@@ -419,6 +444,7 @@ function useSupabaseAuth(): UseAuthReturn {
 
       return { error: null }
     } catch (error) {
+      clearOAuthState()
       const resolvedError = error instanceof Error ? error : new Error(String(error))
       if (resolvedError.name === "TimeoutError") {
         const { data: fallbackSession } = await supabase.auth.getSession()
@@ -441,7 +467,7 @@ function useSupabaseAuth(): UseAuthReturn {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [supabase.auth, waitForSession])
 
   const signInWithApple = useCallback(async () => {
     setLoading(true)
@@ -462,11 +488,13 @@ function useSupabaseAuth(): UseAuthReturn {
       if (__DEV__) {
         logger.debug("[useAuth] Apple OAuth redirectTo", { redirectTo })
       }
+      const oauthState = createOAuthState()
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "apple",
         options: {
           redirectTo,
+          queryParams: { state: oauthState },
           // On web, allow Supabase to redirect the browser directly to Apple
           // On mobile, we handle the redirect ourselves via WebBrowser
           skipBrowserRedirect: Platform.OS !== "web",
@@ -474,6 +502,7 @@ function useSupabaseAuth(): UseAuthReturn {
       })
 
       if (error) {
+        clearOAuthState()
         return { error }
       }
 
@@ -505,6 +534,7 @@ function useSupabaseAuth(): UseAuthReturn {
             const accessTokenParam = getParam("access_token")
             const refreshToken = getParam("refresh_token")
             const code = getParam("code")
+            const state = getParam("state")
 
             if (__DEV__) {
               logger.debug("[useAuth] Apple OAuth callback params", {
@@ -512,6 +542,10 @@ function useSupabaseAuth(): UseAuthReturn {
                 hasRefreshToken: !!refreshToken,
                 hasCode: !!code,
               })
+            }
+
+            if (!consumeOAuthState(state)) {
+              return { error: new Error("Invalid OAuth callback state") }
             }
 
             if (code) {
@@ -565,6 +599,7 @@ function useSupabaseAuth(): UseAuthReturn {
               }
             }
           } else if (result.type === "cancel") {
+            clearOAuthState()
             return { error: new Error("OAuth flow cancelled") }
           }
         } else {
@@ -579,6 +614,7 @@ function useSupabaseAuth(): UseAuthReturn {
 
       return { error: null }
     } catch (error) {
+      clearOAuthState()
       const resolvedError = error instanceof Error ? error : new Error(String(error))
       if (resolvedError.name === "TimeoutError") {
         const { data: fallbackSession } = await supabase.auth.getSession()
@@ -601,47 +637,53 @@ function useSupabaseAuth(): UseAuthReturn {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [supabase.auth, waitForSession])
 
-  const signInWithMagicLink = useCallback(async (email: string, captchaToken?: string) => {
-    setLoading(true)
-    try {
-      // Generate proper redirect URL for magic link
-      // On web: redirect to auth callback page
-      // On mobile: no redirect needed (user enters OTP code manually)
-      const emailRedirectTo =
-        Platform.OS === "web" && typeof window !== "undefined"
-          ? `${window.location.origin}/auth/callback`
-          : undefined
+  const signInWithMagicLink = useCallback(
+    async (email: string, captchaToken?: string) => {
+      setLoading(true)
+      try {
+        // Generate proper redirect URL for magic link
+        // On web: redirect to auth callback page
+        // On mobile: no redirect needed (user enters OTP code manually)
+        const emailRedirectTo =
+          Platform.OS === "web" && typeof window !== "undefined"
+            ? `${window.location.origin}/auth/callback`
+            : undefined
 
-      const { error } = await supabase.auth.signInWithOtp({
+        const { error } = await supabase.auth.signInWithOtp({
+          email,
+          options: {
+            emailRedirectTo,
+            ...(captchaToken ? { captchaToken } : {}),
+          },
+        })
+        return { error }
+      } finally {
+        setLoading(false)
+      }
+    },
+    [supabase.auth],
+  )
+
+  const verifyOtp = useCallback(
+    async (email: string, token: string) => {
+      setLoading(true)
+      const { data, error } = await supabase.auth.verifyOtp({
         email,
-        options: {
-          emailRedirectTo,
-          ...(captchaToken ? { captchaToken } : {}),
-        },
+        token,
+        type: "email",
       })
-      return { error }
-    } finally {
+      if (!error && data?.session) {
+        const verifiedSession = data.session
+        setSession(verifiedSession)
+        setUser(verifiedSession?.user ?? null)
+      }
       setLoading(false)
-    }
-  }, [])
-
-  const verifyOtp = useCallback(async (email: string, token: string) => {
-    setLoading(true)
-    const { data, error } = await supabase.auth.verifyOtp({
-      email,
-      token,
-      type: "email",
-    })
-    if (!error && data?.session) {
-      const verifiedSession = data.session
-      setSession(verifiedSession)
-      setUser(verifiedSession?.user ?? null)
-    }
-    setLoading(false)
-    return { error }
-  }, [])
+      return { error }
+    },
+    [supabase.auth],
+  )
 
   return {
     user,
@@ -910,14 +952,10 @@ function useConvexAuthImpl(): UseAuthReturn {
  *   - useConvexPasswordAuth() - email/password authentication
  *   - useConvexMagicLink() - OTP/magic link authentication
  */
-export function useAuth(): UseAuthReturn {
-  // Call both hooks unconditionally to satisfy React's rules of hooks
-  // The unused hook's state will be ignored
-  const convexAuth = useConvexAuthImpl()
-  const supabaseAuth = useSupabaseAuth()
+const useSelectedAuthImpl: () => UseAuthReturn = isConvex ? useConvexAuthImpl : useSupabaseAuth
 
-  // Return the appropriate auth based on backend config
-  return isConvex ? convexAuth : supabaseAuth
+export function useAuth(): UseAuthReturn {
+  return useSelectedAuthImpl()
 }
 
 // ============================================================================

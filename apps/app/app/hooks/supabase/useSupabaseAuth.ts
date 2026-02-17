@@ -15,6 +15,7 @@ import { env } from "../../config/env"
 import { supabase } from "../../services/supabase"
 import { useAuthStore } from "../../stores/auth"
 import { logger } from "../../utils/Logger"
+import { clearOAuthState, consumeOAuthState, createOAuthState } from "../../utils/oauthState"
 
 // ============================================================================
 // Platform Imports
@@ -351,18 +352,23 @@ export function useSupabaseAuth(): SupabaseAuthState & SupabaseAuthActions {
             ? `${window.location.origin}/auth/callback`
             : undefined
           : makeRedirectUri({ scheme: "shipnative", path: "auth/callback", isTripleSlashed: true })
+      const oauthState = createOAuthState()
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo,
+          queryParams: { state: oauthState },
           // On web, allow Supabase to redirect the browser directly to Google
           // On mobile, we handle the redirect ourselves via WebBrowser
           skipBrowserRedirect: Platform.OS !== "web",
         },
       })
 
-      if (error) return { error: error as Error }
+      if (error) {
+        clearOAuthState()
+        return { error: error as Error }
+      }
 
       // Mobile: Handle OAuth flow via in-app browser
       if (Platform.OS !== "web" && data?.url && WebBrowser) {
@@ -370,6 +376,7 @@ export function useSupabaseAuth(): SupabaseAuthState & SupabaseAuthActions {
         if (result.type === "success" && result.url) {
           await handleOAuthCallback(result.url)
         } else if (result.type === "cancel") {
+          clearOAuthState()
           return { error: new Error("OAuth flow cancelled") }
         }
       }
@@ -378,6 +385,7 @@ export function useSupabaseAuth(): SupabaseAuthState & SupabaseAuthActions {
       // The AuthCallbackScreen will handle the token exchange
       return { error: null }
     } catch (error) {
+      clearOAuthState()
       return { error: error as Error }
     } finally {
       setIsLoading(false)
@@ -393,18 +401,23 @@ export function useSupabaseAuth(): SupabaseAuthState & SupabaseAuthActions {
             ? `${window.location.origin}/auth/callback`
             : undefined
           : makeRedirectUri({ scheme: "shipnative", path: "auth/callback", isTripleSlashed: true })
+      const oauthState = createOAuthState()
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "apple",
         options: {
           redirectTo,
+          queryParams: { state: oauthState },
           // On web, allow Supabase to redirect the browser directly to Apple
           // On mobile, we handle the redirect ourselves via WebBrowser
           skipBrowserRedirect: Platform.OS !== "web",
         },
       })
 
-      if (error) return { error: error as Error }
+      if (error) {
+        clearOAuthState()
+        return { error: error as Error }
+      }
 
       // Mobile: Handle OAuth flow via in-app browser
       if (Platform.OS !== "web" && data?.url && WebBrowser) {
@@ -412,6 +425,7 @@ export function useSupabaseAuth(): SupabaseAuthState & SupabaseAuthActions {
         if (result.type === "success" && result.url) {
           await handleOAuthCallback(result.url)
         } else if (result.type === "cancel") {
+          clearOAuthState()
           return { error: new Error("OAuth flow cancelled") }
         }
       }
@@ -420,6 +434,7 @@ export function useSupabaseAuth(): SupabaseAuthState & SupabaseAuthActions {
       // The AuthCallbackScreen will handle the token exchange
       return { error: null }
     } catch (error) {
+      clearOAuthState()
       return { error: error as Error }
     } finally {
       setIsLoading(false)
@@ -437,6 +452,11 @@ export function useSupabaseAuth(): SupabaseAuthState & SupabaseAuthActions {
     const accessToken = getParam("access_token")
     const refreshToken = getParam("refresh_token")
     const code = getParam("code")
+    const state = getParam("state")
+
+    if (!consumeOAuthState(state)) {
+      throw new Error("Invalid OAuth callback state")
+    }
 
     if (code) {
       const exchangeResult = await supabase.auth.exchangeCodeForSession(code)
