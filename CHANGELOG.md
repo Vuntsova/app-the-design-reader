@@ -5,6 +5,42 @@ All notable changes to Shipnative will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0-rc10] - March 2026
+
+### Fixed
+
+- **OAuth CSRF bypass**: Callback now requires a valid `state` parameter — omitting it no longer skips CSRF verification
+- **Memory leak in realtime messages**: Typing timeout cleanup no longer holds stale references across re-renders
+- **Rules of Hooks violation**: `useMemo` in OnboardingScreen moved out of conditional block to prevent runtime crashes
+- **Translation keys stripped in production**: `loginScreen` and `errors` keys were inside `@demo remove-block` — moved to production scope
+- **Sentry init timing**: Moved before app startup so early initialization errors are actually captured
+- **iOS password autofill**: Confirm password field no longer triggers a second strong-password suggestion
+- **Env var reading**: Uses `??` instead of `||` so falsy values like `"0"` are no longer silently dropped
+- **Convex auth sync**: No longer creates a fake user with `id: "pending"` — stays in loading state until real user document exists
+- **Preference sync errors**: Fire-and-forget syncs now report failures to Sentry instead of silently swallowing
+- **Duplicate i18n init**: Removed redundant async initialization — single synchronous init at module load
+- **Email verification polling**: Bare catch blocks now log warnings instead of silently swallowing errors
+
+### Improved
+
+- **Root ErrorBoundary**: Unhandled errors now show a recovery screen instead of a white page
+- **Zustand auth selectors**: Converted to proper selector functions for correct memoization
+- **Realtime presence stability**: `customData` changes compared by value (JSON serialization), not by reference
+- **Rate limiter**: Fails open on internal errors (client-side defense-in-depth) with full error logging
+- **Certificate pinning**: Misconfiguration now throws in production instead of logging silently
+- **OAuth state**: Atomic read-and-clear consumption prevents TOCTOU race conditions
+- **API timeout**: Configurable via `EXPO_PUBLIC_API_TIMEOUT` environment variable
+- **Full i18n coverage**: WelcomeScreen, LoginScreen, and PaywallScreen hardcoded strings replaced with translation keys
+- **ComponentShowcaseScreen**: Callbacks wrapped in `useCallback` to prevent unnecessary re-renders of memoized children
+- **ConvexAuthSync**: Replaced unsafe `as unknown as User` casts with explicit mapping functions
+- **Stable `updated_at`**: Uses Convex `_creationTime` instead of `new Date()` on every sync cycle
+
+### Added
+
+- **AuthErrorCode type**: Typed error codes (`invalid_credentials`, `email_not_confirmed`, etc.) and `createAuthError` helper
+- **Logger.trace()**: New trace level for granular debug output below the debug level
+- **Web storage fallback warning**: Logs once when falling back from sessionStorage to localStorage
+
 ## [Unreleased]
 
 ### Improved
