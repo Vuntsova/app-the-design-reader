@@ -178,12 +178,19 @@ export function BackendProvider({
       init()
     } else {
       // Already initialized, get the instance synchronously
-      import("../services/backend").then(({ getBackend }) => {
-        if (mounted) {
-          setBackend(getBackend())
-          setIsReady(true)
-        }
-      })
+      import("../services/backend")
+        .then(({ getBackend }) => {
+          if (mounted) {
+            setBackend(getBackend())
+            setIsReady(true)
+          }
+        })
+        .catch((err) => {
+          if (mounted) {
+            logger.error("Backend import failed", {}, err as Error)
+            setError(err as Error)
+          }
+        })
     }
 
     return () => {

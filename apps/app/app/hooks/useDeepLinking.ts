@@ -18,7 +18,7 @@ export function useDeepLinking() {
 
     // Cleanup
     return () => {
-      subscription.then((sub) => sub?.remove())
+      subscription.then((sub) => sub?.remove()).catch(() => {})
     }
   }, [])
 }

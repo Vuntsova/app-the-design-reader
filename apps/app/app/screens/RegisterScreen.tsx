@@ -198,7 +198,7 @@ export const RegisterScreen = () => {
               autoComplete="password"
               autoCorrect={false}
               secureTextEntry
-              textContentType="oneTimeCode"
+              textContentType="newPassword"
               returnKeyType="next"
               status={fieldState.error ? "error" : "default"}
               helper={fieldState.error?.message}
@@ -242,7 +242,7 @@ export const RegisterScreen = () => {
               autoComplete="password"
               autoCorrect={false}
               secureTextEntry
-              textContentType="oneTimeCode"
+              textContentType="password"
               returnKeyType="done"
               onSubmitEditing={handleRegister}
               status={fieldState.error ? "error" : "default"}

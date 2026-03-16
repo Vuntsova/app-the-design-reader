@@ -12,7 +12,7 @@ import { LoadingScreen } from "@/screens/LoadingScreen"
 import { useAuthStore } from "@/stores/auth"
 import { formatAuthError } from "@/utils/formatAuthError"
 import { logger } from "@/utils/Logger"
-import { consumeOAuthState, hasPendingOAuthState } from "@/utils/oauthState"
+import { consumeOAuthState } from "@/utils/oauthState"
 
 /**
  * Parse OAuth tokens from URL hash fragment (web only)
@@ -142,11 +142,10 @@ export const AuthCallbackScreen = () => {
         // Supabase OAuth Callback Handling
         // ================================================================
         if (isSupabase) {
-          if (hasPendingOAuthState()) {
-            const isValidState = consumeOAuthState(oauthState)
-            if (!isValidState) {
-              throw new Error("Invalid OAuth callback state. Please try signing in again.")
-            }
+          // consumeOAuthState atomically reads and clears the stored state.
+          // If no state was pending, it returns false only when receivedState is also absent.
+          if (!oauthState || !consumeOAuthState(oauthState)) {
+            throw new Error("Invalid OAuth callback state. Please try signing in again.")
           }
 
           // Dynamic import to avoid loading Supabase in Convex builds

@@ -38,6 +38,35 @@ export type AuthChangeEvent =
   | "USER_UPDATED"
   | "PASSWORD_RECOVERY"
 
+/**
+ * Specific error codes for auth operations
+ */
+export type AuthErrorCode =
+  | "invalid_credentials"
+  | "email_not_confirmed"
+  | "user_not_found"
+  | "network_error"
+  | "rate_limit_exceeded"
+  | "weak_password"
+  | "email_already_in_use"
+  | "unknown"
+
+/**
+ * Typed auth error with a discriminating code
+ */
+export interface AuthError extends Error {
+  code: AuthErrorCode
+}
+
+/**
+ * Helper to create a typed AuthError
+ */
+export function createAuthError(code: AuthErrorCode, message: string): AuthError {
+  const error = new Error(message) as AuthError
+  error.code = code
+  return error
+}
+
 export interface AuthStateChangeCallback {
   (event: AuthChangeEvent, session: Session | null): void
 }

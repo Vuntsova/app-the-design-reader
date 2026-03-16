@@ -82,14 +82,14 @@ class RateLimiter {
       storageUtils.save(key, stored)
       return true
     } catch (error) {
-      // On error, allow the request (fail open) but log the error
-      if (__DEV__) {
-        logger.error(
-          "[RateLimiter] Error checking rate limit, allowing request",
-          {},
-          error as Error,
-        )
-      }
+      // Client-side rate limiter fails open on internal errors.
+      // Server-side rate limiting is the primary protection.
+      // Failing closed here would lock users out if MMKV storage is corrupted.
+      logger.error(
+        "[RateLimiter] Error checking rate limit, allowing request (fail-open)",
+        {},
+        error as Error,
+      )
       return true
     }
   }

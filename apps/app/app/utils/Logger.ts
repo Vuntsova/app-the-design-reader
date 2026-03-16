@@ -16,6 +16,7 @@
  * Log levels
  */
 export enum LogLevel {
+  TRACE = "TRACE",
   DEBUG = "DEBUG",
   INFO = "INFO",
   WARN = "WARN",
@@ -26,10 +27,11 @@ export enum LogLevel {
  * Log level priority for filtering
  */
 const LOG_LEVEL_PRIORITY: Record<LogLevel, number> = {
-  [LogLevel.DEBUG]: 0,
-  [LogLevel.INFO]: 1,
-  [LogLevel.WARN]: 2,
-  [LogLevel.ERROR]: 3,
+  [LogLevel.TRACE]: 0,
+  [LogLevel.DEBUG]: 1,
+  [LogLevel.INFO]: 2,
+  [LogLevel.WARN]: 3,
+  [LogLevel.ERROR]: 4,
 }
 
 /**
@@ -256,6 +258,9 @@ class Logger {
     const formattedMessage = formatLogMessage(level, safeMessage, metadata)
 
     switch (level) {
+      case LogLevel.TRACE:
+        console.debug(formattedMessage)
+        break
       case LogLevel.DEBUG:
         console.debug(formattedMessage)
         break
@@ -352,6 +357,13 @@ class Logger {
     this.logToConsole(level, safeMessage, preparedMetadata)
     this.logToAnalytics(level, safeMessage, preparedMetadata)
     this.logToCrashReporting(level, safeMessage, preparedMetadata, error)
+  }
+
+  /**
+   * Trace level logging (most verbose)
+   */
+  trace(message: string, metadata?: Record<string, unknown>): void {
+    this.log(LogLevel.TRACE, message, metadata)
   }
 
   /**

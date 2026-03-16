@@ -352,13 +352,10 @@ export function useRealtimeMessages(
     tableChannelRef.current = insertChannel
     broadcastChannelRef.current = broadcastChannel
 
-    // Copy ref value to local variable for cleanup (React hooks rule)
-    const timeouts = typingTimeoutsRef.current
-
     return () => {
-      // Clear typing timeouts
-      timeouts.forEach((timeout) => clearTimeout(timeout))
-      timeouts.clear()
+      // Clear typing timeouts - use ref directly to ensure we clear the current timeouts
+      typingTimeoutsRef.current.forEach((timeout) => clearTimeout(timeout))
+      typingTimeoutsRef.current.clear()
 
       // Unsubscribe from all channels
       insertChannel.unsubscribe()

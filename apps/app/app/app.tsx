@@ -39,7 +39,7 @@ import { certificatePinning } from "./services/certificatePinning"
 import { logMockServicesStatus } from "./services/mocks"
 import { initPosthog } from "./services/posthog"
 import { initRevenueCat } from "./services/revenuecat"
-import { initSentry } from "./services/sentry"
+import { initSentry, sentry } from "./services/sentry"
 import { useAuthStore, useNotificationStore, useSubscriptionStore } from "./stores"
 import { ThemeProvider } from "./theme/context"
 import { customFontsToLoad } from "./theme/typography"
@@ -47,6 +47,7 @@ import { webDimension } from "./types/webStyles"
 import { logger } from "./utils/Logger"
 import { securityCheck } from "./utils/securityCheck"
 import * as storage from "./utils/storage"
+import { ErrorBoundary } from "./screens/ErrorScreen/ErrorBoundary"
 
 type KeyboardProviderProps = { children?: React.ReactNode }
 
@@ -153,6 +154,10 @@ export function App() {
   }, [])
 
   useEffect(() => {
+    // Initialize Sentry early so it can capture errors during app initialization.
+    // This must run before initialize() which may call sentry.captureException().
+    initSentry()
+
     let isMounted = true
     const initialize = async () => {
       try {
@@ -192,12 +197,20 @@ export function App() {
           .initialize()
           .catch((error) => {
             logger.error("Subscription initialization failed", {}, error as Error)
+            sentry.captureException(error as Error, {
+              tags: { context: "initialization", service: "subscription" },
+            })
           })
 
         // Handle email confirmation link without blocking initial render
-        void handleInitialEmailLink()
+        handleInitialEmailLink().catch((error) => {
+          logger.error("Failed to handle initial email link", {}, error as Error)
+        })
       } catch (e) {
         logger.error("App initialize failed", {}, e as Error)
+        sentry.captureException(e as Error, {
+          tags: { context: "initialization", service: "app" },
+        })
       }
     }
 
@@ -207,10 +220,12 @@ export function App() {
         logMockServicesStatus()
         certificatePinning.initialize()
         securityCheck.log()
-        initSentry()
         initPosthog()
         void initRevenueCat().catch((error) => {
           logger.error("RevenueCat initialization failed", {}, error as Error)
+          sentry.captureException(error as Error, {
+            tags: { context: "initialization", service: "revenuecat" },
+          })
         })
 
         // Initialize notification store (sets up listeners for push notifications)
@@ -219,11 +234,17 @@ export function App() {
           .initialize()
           .catch((error) => {
             logger.error("Notification store initialization failed", {}, error as Error)
+            sentry.captureException(error as Error, {
+              tags: { context: "initialization", service: "notifications" },
+            })
           })
 
         logStartup("Deferred services initialized")
       } catch (error) {
         logger.error("Deferred initialization failed", {}, error as Error)
+        sentry.captureException(error as Error, {
+          tags: { context: "initialization", service: "deferred" },
+        })
       }
     })
 
@@ -319,19 +340,21 @@ export function App() {
 
   // otherwise, we're ready to render the app
   return (
-    <GestureHandlerRootView style={$gestureHandlerRoot}>
-      <SafeAreaProvider initialMetrics={initialWindowMetrics} style={$safeAreaProvider}>
-        <BackendProvider>
-          {Platform.OS === "web" ? (
-            <ThemeProvider>{content}</ThemeProvider>
-          ) : (
-            <KeyboardProvider>
+    <ErrorBoundary catchErrors="always">
+      <GestureHandlerRootView style={$gestureHandlerRoot}>
+        <SafeAreaProvider initialMetrics={initialWindowMetrics} style={$safeAreaProvider}>
+          <BackendProvider>
+            {Platform.OS === "web" ? (
               <ThemeProvider>{content}</ThemeProvider>
-            </KeyboardProvider>
-          )}
-        </BackendProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+            ) : (
+              <KeyboardProvider>
+                <ThemeProvider>{content}</ThemeProvider>
+              </KeyboardProvider>
+            )}
+          </BackendProvider>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </ErrorBoundary>
   )
 }
 

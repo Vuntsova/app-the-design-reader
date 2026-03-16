@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 
 import { getBackend, isUsingMockBackend } from "../services/backend"
 import type { PresenceChannel } from "../services/backend/types"
@@ -88,11 +88,19 @@ export function useRealtimePresence(
   const {
     channelName,
     initialStatus = "online",
-    customData = {},
+    customData,
     onPresenceChange,
     onUserJoin,
     onUserLeave,
   } = options
+
+  // Serialize customData to stabilize the dependency array and avoid re-subscribing every render
+  const customDataSerialized = useMemo(() => JSON.stringify(customData ?? {}), [customData])
+  const stableCustomData = useMemo(
+    () => (customData ?? {}) as Record<string, unknown>,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [customDataSerialized],
+  )
 
   const [presentUsers, setPresentUsers] = useState<PresenceState[]>([])
   const [isConnected, setIsConnected] = useState(false)
@@ -101,7 +109,7 @@ export function useRealtimePresence(
   const channelRef = useRef<PresenceChannel | null>(null)
   const currentUserIdRef = useRef<string | null>(null)
   const currentStatusRef = useRef<PresenceState["status"]>(initialStatus)
-  const currentCustomDataRef = useRef<Record<string, unknown>>(customData)
+  const currentCustomDataRef = useRef<Record<string, unknown>>(stableCustomData)
 
   // Track presence and sync state
   const syncPresence = useCallback(
@@ -131,7 +139,7 @@ export function useRealtimePresence(
         user_id: "mock-user",
         online_at: new Date().toISOString(),
         status: initialStatus,
-        custom: customData,
+        custom: stableCustomData,
       }
       setPresentUsers([mockPresence])
       return
@@ -216,7 +224,7 @@ export function useRealtimePresence(
       }
       setIsConnected(false)
     }
-  }, [channelName, initialStatus, customData, syncPresence, onUserJoin, onUserLeave])
+  }, [channelName, initialStatus, stableCustomData, syncPresence, onUserJoin, onUserLeave])
 
   // Update status
   const updateStatus = useCallback(async (status: PresenceState["status"]) => {

@@ -19,6 +19,7 @@ import { useNotificationStore } from "../stores/notificationStore"
 import type { SupabaseDatabase, UserPreferences } from "../types/supabase"
 import { logger } from "../utils/Logger"
 import { storage } from "../utils/storage"
+import { sentry } from "./sentry"
 
 // Conditionally import Supabase - only when using Supabase backend
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -105,7 +106,10 @@ export function updatePreference(
       }
     })
     .catch((err: unknown) => {
-      logger.debug(`Error syncing ${preference} preference`, { error: err })
+      logger.error(`Error syncing ${preference} preference`, {}, err as Error)
+      sentry.captureException(err as Error, {
+        tags: { context: "preferences_sync", preference },
+      })
     })
 }
 
@@ -163,7 +167,10 @@ export function syncAllPreferences(userId: string, preferences: Partial<UserPref
       }
     })
     .catch((err: unknown) => {
-      logger.debug("Error syncing preferences", { error: err })
+      logger.error("Error syncing preferences", {}, err as Error)
+      sentry.captureException(err as Error, {
+        tags: { context: "preferences_sync", preference: "all" },
+      })
     })
 }
 
@@ -295,7 +302,10 @@ export function syncPushToken(userId: string, token: string): void {
       }
     })
     .catch((err: unknown) => {
-      logger.debug("Error syncing push token", { error: err })
+      logger.error("Error syncing push token", {}, err as Error)
+      sentry.captureException(err as Error, {
+        tags: { context: "preferences_sync", preference: "push_token" },
+      })
     })
 }
 
@@ -339,7 +349,10 @@ export function deactivatePushToken(userId: string, token: string): void {
       }
     })
     .catch((err: unknown) => {
-      logger.debug("Error deactivating push token", { error: err })
+      logger.error("Error deactivating push token", {}, err as Error)
+      sentry.captureException(err as Error, {
+        tags: { context: "preferences_sync", preference: "deactivate_token" },
+      })
     })
 }
 
@@ -376,6 +389,9 @@ export function deactivateAllPushTokens(userId: string): void {
       }
     })
     .catch((err: unknown) => {
-      logger.debug("Error deactivating all push tokens", { error: err })
+      logger.error("Error deactivating all push tokens", {}, err as Error)
+      sentry.captureException(err as Error, {
+        tags: { context: "preferences_sync", preference: "deactivate_all_tokens" },
+      })
     })
 }

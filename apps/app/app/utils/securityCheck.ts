@@ -77,6 +77,9 @@ export function runSecurityChecks(): SecurityCheckResult {
 
 /**
  * Log security check results
+ *
+ * In production, throws an error if certificate pinning is enabled but not configured,
+ * preventing the app from running insecurely.
  */
 export function logSecurityChecks(): void {
   const checks = runSecurityChecks()
@@ -88,8 +91,14 @@ export function logSecurityChecks(): void {
       overall: checks.overall,
     })
   } else {
-    // In production, only log warnings or errors
-    if (checks.overall.status === "warning" || checks.overall.status === "error") {
+    if (checks.overall.status === "error") {
+      // In production, if pinning is enabled but not configured, prevent the app from running insecurely
+      throw new Error(
+        `Security check failed: ${checks.overall.message}. ` +
+          "The app cannot run in production with certificate pinning enabled but no pins configured. " +
+          "Either configure certificate pins or disable certificate pinning.",
+      )
+    } else if (checks.overall.status === "warning") {
       logger.warn("Security Configuration Warning", {
         certificatePinning: checks.certificatePinning,
         overall: checks.overall,

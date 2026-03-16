@@ -73,20 +73,8 @@ i18n.use(initReactI18next).init({
 })
 
 export const initI18n = async () => {
-  // i18n is already initialized synchronously above
-  // This function now just ensures the promise-based API still works
-  // for any code that awaits it
-  if (!i18n.isInitialized) {
-    await i18n.init({
-      resources,
-      lng: initialLanguage,
-      fallbackLng: fallbackLocale,
-      interpolation: {
-        escapeValue: false,
-      },
-    })
-  }
-
+  // i18n is already initialized synchronously above at module load time.
+  // This function exists so callers that await it continue to work.
   return i18n
 }
 

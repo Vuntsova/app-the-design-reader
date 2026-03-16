@@ -56,6 +56,8 @@ function prefixed(key: string): string {
   return `${PREFIX}${key}`
 }
 
+let hasWarnedSessionStorage = false
+
 export const webSecureStorage = {
   setItem(key: string, value: string): void {
     const session = getSessionStorage()
@@ -64,6 +66,14 @@ export const webSecureStorage = {
     const storageKey = prefixed(key)
 
     if (!target) return
+
+    if (!session && local && !hasWarnedSessionStorage) {
+      hasWarnedSessionStorage = true
+      console.warn(
+        "[webSecureStorage] sessionStorage unavailable, falling back to localStorage. " +
+          "Auth tokens will persist across browser restarts.",
+      )
+    }
 
     try {
       target.setItem(storageKey, value)
@@ -84,6 +94,13 @@ export const webSecureStorage = {
     try {
       const primaryStorage = session ?? local
       if (!primaryStorage) return null
+
+      if (!session && local && !hasWarnedSessionStorage) {
+        hasWarnedSessionStorage = true
+        console.warn(
+          "[webSecureStorage] sessionStorage unavailable, reading from localStorage fallback.",
+        )
+      }
 
       const current = primaryStorage.getItem(storageKey)
       if (current) return current

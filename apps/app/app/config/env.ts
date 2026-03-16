@@ -12,7 +12,7 @@ import { logger } from "../utils/Logger"
 
 const readRawEnv = (key: string): string | undefined => {
   return (
-    process.env[`EXPO_PUBLIC_${key.toUpperCase()}`] ||
+    process.env[`EXPO_PUBLIC_${key.toUpperCase()}`] ??
     (Constants.expoConfig?.extra?.[key] as string | undefined)
   )
 }
@@ -162,6 +162,26 @@ const envInput: Partial<EnvConfig> = {
 
 const parsedEnv = EnvSchema.safeParse(envInput)
 
+if (!parsedEnv.success) {
+  const issues = parsedEnv.error.issues
+  const missingList = issues.map((issue) => issue.path.join(".")).join(", ")
+
+  if (resolvedAppEnv === "production") {
+    throw new Error(
+      `Environment validation failed in production. Missing or invalid: ${missingList}. ` +
+        `Details: ${issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`,
+    )
+  }
+
+  // In development/staging, log a clear warning with full details
+  logger.warn("[EnvConfig] Validation failed, using fallback values", {
+    issues: issues.map((issue) => ({
+      path: issue.path.join("."),
+      message: issue.message,
+    })),
+  })
+}
+
 const env: EnvConfig = parsedEnv.success
   ? parsedEnv.data
   : {
@@ -182,11 +202,6 @@ export const envValidation = {
   issues: validationIssues,
   missing: validationIssues.map((issue) => issue.path.join(".")),
   warnings: [],
-}
-
-if (!envValidation.isValid && env.appEnv === "production") {
-  const missingList = envValidation.missing.join(", ")
-  throw new Error(`Missing required environment variables: ${missingList}`)
 }
 
 export { env }

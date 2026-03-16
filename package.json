@@ -6,7 +6,7 @@
     "preflight": "node scripts/preflight-check.js",
     "setup": "tsx --tsconfig tsconfig.setup.json setup.ts",
     "build": "turbo run build",
-    "dev": "yarn preflight && cd apps/app && EXPO_IOS_SIMULATOR_DEVICE_NAME=D44A1507-3E39-4AA2-9662-F1CC7C832D68 yarn dev",
+    "dev": "yarn preflight && cd apps/app && yarn dev",
     "lint": "turbo run lint",
     "lint:check": "turbo run lint:check",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",

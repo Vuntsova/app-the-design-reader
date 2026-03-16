@@ -294,13 +294,13 @@ export const PaywallScreen = () => {
       const result = await useSubscriptionStore.getState().restorePurchases()
 
       if (result.error) {
-        setRestoreMessage({ type: "error", text: "Failed to restore purchases. Please try again." })
+        setRestoreMessage({ type: "error", text: t("paywallScreen:restoreFailed") })
       } else {
         const isPro = useSubscriptionStore.getState().isPro
         if (isPro) {
-          setRestoreMessage({ type: "success", text: "Purchases restored successfully!" })
+          setRestoreMessage({ type: "success", text: t("paywallScreen:restoreSuccess") })
         } else {
-          setRestoreMessage({ type: "error", text: "No previous purchases found." })
+          setRestoreMessage({ type: "error", text: t("paywallScreen:noPurchasesFound") })
         }
       }
 
@@ -308,12 +308,12 @@ export const PaywallScreen = () => {
       scheduleRestoreMessageClear()
     } catch (err) {
       logger.error("Restore purchases failed", { error: err })
-      setRestoreMessage({ type: "error", text: "Failed to restore purchases. Please try again." })
+      setRestoreMessage({ type: "error", text: t("paywallScreen:restoreFailed") })
       scheduleRestoreMessageClear()
     } finally {
       setIsRestoring(false)
     }
-  }, [scheduleRestoreMessageClear])
+  }, [scheduleRestoreMessageClear, t])
 
   return (
     <Container safeAreaEdges={["top"]}>
@@ -355,27 +355,25 @@ export const PaywallScreen = () => {
 
           {/* Header */}
           <View style={styles.header}>
-            <Text preset="heading" style={styles.title}>
-              Unlock Pro
-            </Text>
-            <Text style={styles.subtitle}>Get unlimited access to all features</Text>
+            <Text preset="heading" style={styles.title} tx="paywallScreen:unlockPro" />
+            <Text style={styles.subtitle} tx="paywallScreen:unlockProDescription" />
           </View>
 
           {/* Features list */}
           <View style={styles.featuresContainer}>
             {[
-              { title: "Unlimited projects", desc: "Create as many as you need" },
-              { title: "Priority support", desc: "Get help when you need it" },
-              { title: "Advanced analytics", desc: "Deep insights into your data" },
-              { title: "No watermarks", desc: "Clean, professional exports" },
+              { titleKey: "paywallScreen:featureUnlimitedProjects" as const, descKey: "paywallScreen:featureUnlimitedProjectsDesc" as const },
+              { titleKey: "paywallScreen:featurePrioritySupport" as const, descKey: "paywallScreen:featurePrioritySupportDesc" as const },
+              { titleKey: "paywallScreen:featureAdvancedAnalytics" as const, descKey: "paywallScreen:featureAdvancedAnalyticsDesc" as const },
+              { titleKey: "paywallScreen:featureNoWatermarks" as const, descKey: "paywallScreen:featureNoWatermarksDesc" as const },
             ].map((feature, idx) => (
               <View key={idx} style={styles.featureRow}>
                 <View style={styles.featureCheck}>
                   <Text style={styles.featureCheckText}>✓</Text>
                 </View>
                 <View style={styles.featureContent}>
-                  <Text style={styles.featureTitle}>{feature.title}</Text>
-                  <Text style={styles.featureDesc}>{feature.desc}</Text>
+                  <Text style={styles.featureTitle}>{t(feature.titleKey)}</Text>
+                  <Text style={styles.featureDesc}>{t(feature.descKey)}</Text>
                 </View>
               </View>
             ))}
@@ -385,7 +383,7 @@ export const PaywallScreen = () => {
 
           {/* Package selection */}
           <View style={styles.packageSection}>
-            <Text style={styles.sectionTitle}>Choose your plan</Text>
+            <Text style={styles.sectionTitle} tx="paywallScreen:choosePlan" />
 
             {packages.length === 0 ? (
               <Text style={styles.errorText}>
@@ -408,7 +406,7 @@ export const PaywallScreen = () => {
                     >
                       {isAnnual && (
                         <View style={styles.bestValueBadge}>
-                          <Text style={styles.bestValueText}>BEST VALUE</Text>
+                          <Text style={styles.bestValueText} tx="paywallScreen:bestValue" />
                         </View>
                       )}
                       <View style={styles.packageRadio}>
@@ -417,11 +415,11 @@ export const PaywallScreen = () => {
                         </View>
                       </View>
                       <View style={styles.packageInfo}>
-                        <Text style={styles.packageName}>{isAnnual ? "Annual" : "Monthly"}</Text>
+                        <Text style={styles.packageName}>{isAnnual ? t("paywallScreen:annual") : t("paywallScreen:monthly")}</Text>
                         <Text style={styles.packagePrice}>{displayPrice}</Text>
                         {isAnnual && (
                           <Text style={styles.packageSavings}>
-                            Save 40% - ${(pricingPkg.price / 12).toFixed(2)}/mo
+                            {t("paywallScreen:savingsPerMonth", { price: (pricingPkg.price / 12).toFixed(2) })}
                           </Text>
                         )}
                       </View>
@@ -434,7 +432,7 @@ export const PaywallScreen = () => {
 
           {/* CTA Button */}
           <Button
-            text={isMock ? "Simulate Purchase" : "Continue"}
+            tx={isMock ? "paywallScreen:simulatePurchase" : "paywallScreen:continue"}
             onPress={() => {
               const pkg = getSelectedPkg()
               if (pkg) handlePackagePurchase(pkg)
@@ -447,11 +445,11 @@ export const PaywallScreen = () => {
 
           {/* Trust signals */}
           <View style={styles.trustSignals}>
-            <Text style={styles.trustText}>Cancel anytime</Text>
+            <Text style={styles.trustText} tx="paywallScreen:cancelAnytime" />
             <Text style={styles.trustDot}>•</Text>
-            <Text style={styles.trustText}>Secure checkout</Text>
+            <Text style={styles.trustText} tx="paywallScreen:secureCheckout" />
             <Text style={styles.trustDot}>•</Text>
-            <Text style={styles.trustText}>Instant access</Text>
+            <Text style={styles.trustText} tx="paywallScreen:instantAccess" />
           </View>
 
           {/* Skip option */}
@@ -489,7 +487,7 @@ export const PaywallScreen = () => {
               </View>
             )}
             <Button
-              text={isRestoring ? "Restoring..." : "Restore purchases"}
+              tx={isRestoring ? "paywallScreen:restoring" : "paywallScreen:restorePurchases"}
               onPress={handleRestorePurchases}
               variant="ghost"
               style={styles.restoreButton}

@@ -16,6 +16,7 @@ import { POLLING } from "../config/constants"
 import { getBackend } from "../services/backend"
 import { useAuthStore } from "../stores/auth"
 import type { User } from "../types/auth"
+import { logger } from "../utils/Logger"
 
 interface UseEmailVerificationPollingOptions {
   /** Whether the email is already confirmed */
@@ -94,8 +95,11 @@ export function useEmailVerificationPolling({
             // Don't update the store - keep existing user state
             return
           }
-        } catch {
+        } catch (error) {
           // If getUser throws, preserve existing user and skip this poll cycle
+          logger.warn("Email verification polling: getUser failed", {
+            error: error instanceof Error ? error.message : String(error),
+          })
           if (currentUser) {
             return
           }
@@ -113,8 +117,11 @@ export function useEmailVerificationPolling({
             useAuthStore.getState().setUser(userBeforeInitialize)
           }
         }
-      } catch {
+      } catch (error) {
         // On any error, preserve the existing user
+        logger.warn("Email verification polling: poll cycle failed", {
+          error: error instanceof Error ? error.message : String(error),
+        })
         const existingUser = useAuthStore.getState().user
         if (!existingUser && user) {
           // User was lost - restore it

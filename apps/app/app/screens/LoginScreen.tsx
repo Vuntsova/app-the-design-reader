@@ -179,9 +179,7 @@ export const LoginScreen = () => {
         {loading ? (
           <Spinner size="sm" color="white" />
         ) : (
-          <Text weight="semiBold" style={styles.primaryButtonText} tx="loginScreen:signIn">
-            Sign In
-          </Text>
+          <Text weight="semiBold" style={styles.primaryButtonText} tx="loginScreen:signIn" />
         )}
       </TouchableOpacity>
 
@@ -191,9 +189,7 @@ export const LoginScreen = () => {
         style={styles.forgotButton}
         activeOpacity={0.6}
       >
-        <Text size="sm" color="secondary" weight="medium">
-          Forgot Password?
-        </Text>
+        <Text size="sm" color="secondary" weight="medium" tx="loginScreen:forgotPassword" />
       </TouchableOpacity>
 
       {/* Magic Link / Passwordless Option */}
@@ -220,9 +216,7 @@ export const LoginScreen = () => {
                 disabled={oauthLoading}
               >
                 <Ionicons name="logo-apple" size={24} color={theme.colors.foreground} />
-                <Text weight="semiBold" tx="loginScreen:apple">
-                  Apple
-                </Text>
+                <Text weight="semiBold" tx="loginScreen:apple" />
               </TouchableOpacity>
             )}
 
@@ -234,9 +228,7 @@ export const LoginScreen = () => {
                 disabled={oauthLoading}
               >
                 <Ionicons name="logo-google" size={24} color={theme.colors.foreground} />
-                <Text weight="semiBold" tx="loginScreen:google">
-                  Google
-                </Text>
+                <Text weight="semiBold" tx="loginScreen:google" />
               </TouchableOpacity>
             )}
           </View>

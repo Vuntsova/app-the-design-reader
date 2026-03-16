@@ -1,4 +1,4 @@
-import { FC, useState } from "react"
+import { FC, useState, useMemo } from "react"
 import { View, TouchableOpacity } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useNavigation } from "@react-navigation/native"
@@ -18,6 +18,9 @@ import { logger } from "@/utils/Logger"
 
 interface OnboardingScreenProps extends AppStackScreenProps<"Onboarding"> {}
 
+const TOTAL_STEPS = 3
+const LAST_STEP_INDEX = TOTAL_STEPS - 1
+
 // =============================================================================
 // COMPONENT
 // =============================================================================
@@ -31,9 +34,18 @@ export const OnboardingScreen: FC<OnboardingScreenProps> = function OnboardingSc
   const [step, setStep] = useState(0)
   const [isRequestingPermission, setIsRequestingPermission] = useState(false)
 
+  const goalOptions = useMemo(
+    () => [
+      { key: "goalBuildApp", label: t("onboardingScreen:goalBuildApp") },
+      { key: "goalLearnReactNative", label: t("onboardingScreen:goalLearnReactNative") },
+      { key: "goalJustExploring", label: t("onboardingScreen:goalJustExploring") },
+    ],
+    [t],
+  )
+
   // Slide animations
   const handleNext = async () => {
-    if (step < 2) {
+    if (step < LAST_STEP_INDEX) {
       setStep(step + 1)
     } else {
       // Mark onboarding as complete BEFORE navigation
@@ -64,7 +76,7 @@ export const OnboardingScreen: FC<OnboardingScreenProps> = function OnboardingSc
     return (
       <OnboardingScreenLayout
         currentStep={0}
-        totalSteps={3}
+        totalSteps={TOTAL_STEPS}
         headerIcon="👋"
         titleTx="onboardingScreen:welcomeTitle"
         subtitleTx="onboardingScreen:welcomeSubtitle"
@@ -78,16 +90,10 @@ export const OnboardingScreen: FC<OnboardingScreenProps> = function OnboardingSc
 
   // Step 1: Goal Selection
   if (step === 1) {
-    const goalOptions = [
-      { key: "goalBuildApp", label: t("onboardingScreen:goalBuildApp") },
-      { key: "goalLearnReactNative", label: t("onboardingScreen:goalLearnReactNative") },
-      { key: "goalJustExploring", label: t("onboardingScreen:goalJustExploring") },
-    ]
-
     return (
       <OnboardingScreenLayout
         currentStep={1}
-        totalSteps={3}
+        totalSteps={TOTAL_STEPS}
         headerIcon="🎯"
         titleTx="onboardingScreen:goalsTitle"
         subtitleTx="onboardingScreen:goalsSubtitle"
@@ -110,7 +116,7 @@ export const OnboardingScreen: FC<OnboardingScreenProps> = function OnboardingSc
   return (
     <OnboardingScreenLayout
       currentStep={2}
-      totalSteps={3}
+      totalSteps={TOTAL_STEPS}
       headerIcon="🔔"
       titleTx="onboardingScreen:notificationsTitle"
       subtitleTx="onboardingScreen:notificationsSubtitle"

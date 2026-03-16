@@ -1,4 +1,4 @@
-import { FC, useState, memo } from "react"
+import { FC, useState, memo, useCallback } from "react"
 import { View, ScrollView, useWindowDimensions, Platform, Switch as RNSwitch } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
@@ -900,14 +900,17 @@ export const ComponentShowcaseScreen: FC<ComponentShowcaseScreenProps> =
       UnistylesRuntime.setTheme(newTheme)
     }
 
-    const simulateLoading = () => {
+    const simulateLoading = useCallback(() => {
       setIsLoading(true)
       setTimeout(() => setIsLoading(false), 2000)
-    }
+    }, [])
 
-    const incrementProgress = () => {
+    const incrementProgress = useCallback(() => {
       setProgress((prev) => Math.min(prev + 10, 100))
-    }
+    }, [])
+
+    const handleOpenModal = useCallback(() => setShowModal(true), [])
+    const handleOpenAlertModal = useCallback(() => setShowAlertModal(true), [])
 
     return (
       <Container safeAreaEdges={["top"]}>
@@ -962,8 +965,8 @@ export const ComponentShowcaseScreen: FC<ComponentShowcaseScreenProps> =
             setSelectedFiles={setSelectedFiles}
             selectedDocuments={selectedDocuments}
             setSelectedDocuments={setSelectedDocuments}
-            onOpenModal={() => setShowModal(true)}
-            onOpenAlertModal={() => setShowAlertModal(true)}
+            onOpenModal={handleOpenModal}
+            onOpenAlertModal={handleOpenAlertModal}
           />
         </ScrollView>
 

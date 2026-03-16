@@ -4,11 +4,22 @@
  * Centralized constants used throughout the app
  */
 
+import Constants from "expo-constants"
+
+function readEnvNumber(key: string, fallback: number): number {
+  const raw =
+    process.env[`EXPO_PUBLIC_${key.toUpperCase()}`] ??
+    (Constants.expoConfig?.extra?.[key] as string | undefined)
+  if (!raw) return fallback
+  const parsed = Number(raw)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
+}
+
 /**
  * API Configuration
  */
 export const API_CONFIG = {
-  TIMEOUT: 30000, // 30 seconds
+  TIMEOUT: readEnvNumber("api_timeout", 30000), // 30 seconds default, override with EXPO_PUBLIC_API_TIMEOUT
   RETRY_ATTEMPTS: 3,
   RETRY_DELAY: 1000, // 1 second
 } as const

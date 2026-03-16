@@ -55,6 +55,16 @@ function clearStoredState(): void {
   inMemoryOAuthState = null
 }
 
+/**
+ * Atomically read and clear the stored state in a single operation.
+ * Prevents any possibility of the state being read without being cleared.
+ */
+function consumeStoredState(): string | null {
+  const state = readStoredState()
+  clearStoredState()
+  return state
+}
+
 function constantTimeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false
   let mismatch = 0
@@ -74,9 +84,13 @@ export function createOAuthState(): string {
   return state
 }
 
+/**
+ * Atomically consume (read + clear) the stored OAuth state and validate it
+ * against the received state. The stored state is always cleared regardless
+ * of whether validation succeeds, preventing replay attacks.
+ */
 export function consumeOAuthState(receivedState: string | null | undefined): boolean {
-  const expectedState = readStoredState()
-  clearStoredState()
+  const expectedState = consumeStoredState()
 
   if (!expectedState || !receivedState) {
     return false

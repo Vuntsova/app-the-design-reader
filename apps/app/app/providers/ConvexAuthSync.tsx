@@ -19,6 +19,62 @@ import type { User, Session } from "../types/auth"
 import { logger } from "../utils/Logger"
 
 /**
+ * Maps a Convex user object to the app's User type (Supabase-compatible shape).
+ * This avoids unsafe `as unknown as User` casts by explicitly building the object
+ * with the required fields and using a single controlled cast at the boundary.
+ */
+function mapConvexUserToUser(convexUser: {
+  _id: string
+  _creationTime: number
+  email?: string
+  name?: string
+  avatarUrl?: string
+  emailVerificationTime?: number
+}): User {
+  return {
+    id: convexUser._id,
+    aud: "authenticated",
+    email: convexUser.email,
+    created_at: new Date(convexUser._creationTime).toISOString(),
+    app_metadata: {
+      provider: "convex",
+      providers: ["convex"],
+    },
+    user_metadata: {
+      name: convexUser.name,
+      avatarUrl: convexUser.avatarUrl,
+    },
+    email_confirmed_at: convexUser.emailVerificationTime
+      ? new Date(convexUser.emailVerificationTime).toISOString()
+      : new Date().toISOString(),
+    // Fields required by SupabaseUser but not relevant for Convex
+    role: "",
+    confirmed_at: undefined,
+    last_sign_in_at: undefined,
+    phone: undefined,
+    phone_confirmed_at: undefined,
+    identities: [],
+    factors: [],
+    updated_at: new Date(convexUser._creationTime).toISOString(),
+    is_anonymous: false,
+  } as User
+}
+
+/**
+ * Creates a Convex-compatible Session object wrapping the given user.
+ */
+function createConvexSession(user: User): Session {
+  return {
+    access_token: "convex-managed",
+    refresh_token: "convex-managed",
+    expires_in: 3600,
+    expires_at: Math.floor(Date.now() / 1000) + 3600,
+    token_type: "bearer",
+    user,
+  } as Session
+}
+
+/**
  * ConvexAuthSync - Syncs Convex auth state to Zustand auth store
  *
  * This component listens to Convex auth state changes and updates
@@ -74,67 +130,23 @@ export function ConvexAuthSync({ children }: { children: React.ReactNode }) {
 
       if (convexUser === null) {
         // User is authenticated but users.me returned null
-        // This shouldn't happen normally - log warning but still mark as authenticated
-        // to prevent getting stuck on login screen
+        // This is a brief race condition where the Convex user document hasn't been created yet.
+        // Keep loading state so downstream code doesn't try to use a nonexistent user.
         if (__DEV__) {
           logger.warn(
-            "[ConvexAuthSync] Authenticated but users.me returned null - possible race condition",
+            "[ConvexAuthSync] Authenticated but users.me returned null - waiting for user document",
           )
         }
 
-        // Create a minimal user object to allow navigation to proceed
-        // The actual user data will sync once the query resolves
-        const minimalUser = {
-          id: "pending",
-          aud: "authenticated",
-          email: undefined,
-          created_at: new Date().toISOString(),
-          email_confirmed_at: new Date().toISOString(),
-          app_metadata: { provider: "convex" },
-          user_metadata: {},
-        } as unknown as User
-
-        const session = {
-          access_token: "convex-managed",
-          refresh_token: "convex-managed",
-          expires_in: 3600,
-          token_type: "bearer",
-          user: minimalUser,
-        } as unknown as Session
-
-        setSession(session)
-        setUser(minimalUser)
-        setLoading(false)
-        hasInitializedRef.current = true
+        setLoading(true)
         return
       }
 
       // User is authenticated and we have user data
-      const user = {
-        id: convexUser._id,
-        aud: "authenticated",
-        email: convexUser.email,
-        created_at: new Date(convexUser._creationTime).toISOString(),
-        app_metadata: {
-          provider: "convex",
-        },
-        user_metadata: {
-          name: convexUser.name,
-          avatarUrl: convexUser.avatarUrl,
-        },
-        email_confirmed_at: convexUser.emailVerificationTime
-          ? new Date(convexUser.emailVerificationTime).toISOString()
-          : new Date().toISOString(), // Default to confirmed for Convex users
-      } as unknown as User
+      const user = mapConvexUserToUser(convexUser)
 
       // Create session-like object for compatibility
-      const session = {
-        access_token: "convex-managed",
-        refresh_token: "convex-managed",
-        expires_in: 3600,
-        token_type: "bearer",
-        user,
-      } as unknown as Session
+      const session = createConvexSession(user)
 
       if (__DEV__ && !hasInitializedRef.current) {
         logger.debug("[ConvexAuthSync] Syncing authenticated user to auth store", {

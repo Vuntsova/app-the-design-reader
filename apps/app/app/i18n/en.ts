@@ -13,6 +13,16 @@ const en = {
     readyForLaunch: "Your app, almost ready for launch!",
     exciting: "(ohh, this is exciting!)",
     letsGo: "Let's go!", // @demo remove-current-line
+    getStarted: "Get Started",
+    subtitle: "Create an account or sign in to access all features.",
+    createAccount: "Create Account",
+    signIn: "Sign In",
+    orContinueWith: "or continue with",
+    apple: "Apple",
+    google: "Google",
+    signInError: "Sign In Error",
+    appleSignInFailed: "Failed to sign in with Apple",
+    googleSignInFailed: "Failed to sign in with Google",
   },
   errorScreen: {
     title: "Something went wrong!",
@@ -112,6 +122,31 @@ const en = {
     unableToLoadTitle: "Unable to Load Paywall",
     tryAgain: "Try Again",
     viewPlans: "View Plans",
+    restoreFailed: "Failed to restore purchases. Please try again.",
+    restoreSuccess: "Purchases restored successfully!",
+    noPurchasesFound: "No previous purchases found.",
+    unlockPro: "Unlock Pro",
+    unlockProDescription: "Get unlimited access to all features",
+    featureUnlimitedProjects: "Unlimited projects",
+    featureUnlimitedProjectsDesc: "Create as many as you need",
+    featurePrioritySupport: "Priority support",
+    featurePrioritySupportDesc: "Get help when you need it",
+    featureAdvancedAnalytics: "Advanced analytics",
+    featureAdvancedAnalyticsDesc: "Deep insights into your data",
+    featureNoWatermarks: "No watermarks",
+    featureNoWatermarksDesc: "Clean, professional exports",
+    choosePlan: "Choose your plan",
+    bestValue: "BEST VALUE",
+    annual: "Annual",
+    monthly: "Monthly",
+    savingsPerMonth: "Save 40% - ${{price}}/mo",
+    simulatePurchase: "Simulate Purchase",
+    continue: "Continue",
+    cancelAnytime: "Cancel anytime",
+    secureCheckout: "Secure checkout",
+    instantAccess: "Instant access",
+    restoring: "Restoring...",
+    restorePurchases: "Restore purchases",
   },
   badge: {
     // Badge text is typically dynamic, but we can add common ones if needed
@@ -316,7 +351,6 @@ const en = {
     enabling: "Enabling...",
     maybeLater: "Maybe Later",
   },
-  // @demo remove-block-start
   errors: {
     invalidEmail: "Invalid email address.",
   },
@@ -338,6 +372,7 @@ const en = {
     appleSignInFailed: "Failed to sign in with Apple",
     googleSignInFailed: "Failed to sign in with Google",
   },
+  // @demo remove-block-start
   demoNavigator: {
     componentsTab: "Components",
     debugTab: "Debug",
@@ -416,6 +451,7 @@ const en = {
         "No favorites have been added yet. Tap the heart on an episode to add it to your favorites!",
     },
   },
+  // @demo remove-block-end
   // @demo remove-block-start
   ...demoEn,
   // @demo remove-block-end

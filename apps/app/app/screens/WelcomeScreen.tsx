@@ -1,6 +1,7 @@
 import { FC } from "react"
 import { View, TouchableOpacity, Alert } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
+import { useTranslation } from "react-i18next"
 import { StyleSheet, useUnistyles } from "react-native-unistyles"
 
 import { Divider } from "@/components/Divider"
@@ -22,6 +23,7 @@ interface WelcomeScreenProps extends AppStackScreenProps<"Welcome"> {}
 
 export const WelcomeScreen: FC<WelcomeScreenProps> = function WelcomeScreen(_props) {
   const { navigation } = _props
+  const { t } = useTranslation()
   const { theme } = useUnistyles()
   const { signInWithGoogle, signInWithApple, isLoading } = useAuth()
 
@@ -37,10 +39,10 @@ export const WelcomeScreen: FC<WelcomeScreenProps> = function WelcomeScreen(_pro
     try {
       const { error } = await signInWithApple()
       if (error) {
-        Alert.alert("Sign In Error", error.message)
+        Alert.alert(t("welcomeScreen:signInError"), error.message)
       }
     } catch {
-      Alert.alert("Sign In Error", "Failed to sign in with Apple")
+      Alert.alert(t("welcomeScreen:signInError"), t("welcomeScreen:appleSignInFailed"))
     }
   }
 
@@ -48,17 +50,17 @@ export const WelcomeScreen: FC<WelcomeScreenProps> = function WelcomeScreen(_pro
     try {
       const { error } = await signInWithGoogle()
       if (error) {
-        Alert.alert("Sign In Error", error.message)
+        Alert.alert(t("welcomeScreen:signInError"), error.message)
       }
     } catch {
-      Alert.alert("Sign In Error", "Failed to sign in with Google")
+      Alert.alert(t("welcomeScreen:signInError"), t("welcomeScreen:googleSignInFailed"))
     }
   }
 
   return (
     <AuthScreenLayout
-      title="Get Started"
-      subtitle="Create an account or sign in to access all features."
+      titleTx="welcomeScreen:getStarted"
+      subtitleTx="welcomeScreen:subtitle"
       scrollable={false}
       centerContent
     >
@@ -69,9 +71,7 @@ export const WelcomeScreen: FC<WelcomeScreenProps> = function WelcomeScreen(_pro
         activeOpacity={0.8}
         disabled={isLoading}
       >
-        <Text weight="semiBold" style={styles.primaryButtonText}>
-          Create Account
-        </Text>
+        <Text weight="semiBold" style={styles.primaryButtonText} tx="welcomeScreen:createAccount" />
       </TouchableOpacity>
 
       {/* Secondary Button - Login */}
@@ -81,15 +81,13 @@ export const WelcomeScreen: FC<WelcomeScreenProps> = function WelcomeScreen(_pro
         activeOpacity={0.8}
         disabled={isLoading}
       >
-        <Text weight="semiBold" style={styles.secondaryButtonText}>
-          Sign In
-        </Text>
+        <Text weight="semiBold" style={styles.secondaryButtonText} tx="welcomeScreen:signIn" />
       </TouchableOpacity>
 
       {/* Social Login Section - Only show if at least one social auth is enabled */}
       {(features.enableGoogleAuth || features.enableAppleAuth) && (
         <>
-          <Divider label="or continue with" style={styles.divider} />
+          <Divider label={t("welcomeScreen:orContinueWith")} style={styles.divider} />
 
           {/* Social Buttons Row */}
           <View style={styles.socialRow}>
@@ -101,7 +99,7 @@ export const WelcomeScreen: FC<WelcomeScreenProps> = function WelcomeScreen(_pro
                 disabled={isLoading}
               >
                 <Ionicons name="logo-apple" size={24} color={theme.colors.foreground} />
-                <Text weight="semiBold">Apple</Text>
+                <Text weight="semiBold" tx="welcomeScreen:apple" />
               </TouchableOpacity>
             )}
 
@@ -113,7 +111,7 @@ export const WelcomeScreen: FC<WelcomeScreenProps> = function WelcomeScreen(_pro
                 disabled={isLoading}
               >
                 <Ionicons name="logo-google" size={24} color={theme.colors.foreground} />
-                <Text weight="semiBold">Google</Text>
+                <Text weight="semiBold" tx="welcomeScreen:google" />
               </TouchableOpacity>
             )}
           </View>
