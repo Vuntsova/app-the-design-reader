@@ -1,6 +1,7 @@
 import { Linking } from "react-native"
 import type * as Notifications from "expo-notifications"
 
+import { getAppScheme } from "./appScheme"
 import { logger } from "./Logger"
 
 // Note: Navigation will be handled by React Navigation in the app
@@ -9,9 +10,9 @@ import { logger } from "./Logger"
 
 /**
  * Deep link URL scheme
- * Format: shipnative://screen/path?param=value
+ * Format: <scheme>://screen/path?param=value
  */
-export const DEEP_LINK_SCHEME = "shipnative"
+export const DEEP_LINK_SCHEME = getAppScheme()
 
 /**
  * Parse deep link URL into components

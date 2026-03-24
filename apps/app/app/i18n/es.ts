@@ -1,5 +1,5 @@
 import demoEs from "./demo-es" // @demo remove-current-line
-import { Translations } from "./en"
+import en, { Translations } from "./en"
 
 const es: Translations = {
   common: {
@@ -9,6 +9,7 @@ const es: Translations = {
     logOut: "Cerrar sesión", // @demo remove-current-line
   },
   welcomeScreen: {
+    ...en.welcomeScreen,
     postscript:
       "psst — Esto probablemente no es cómo se va a ver tu app. (A menos que tu diseñador te haya enviado estas pantallas, y en ese caso, ¡lánzalas en producción!)",
     readyForLaunch: "Tu app, casi lista para su lanzamiento",
@@ -91,6 +92,7 @@ const es: Translations = {
     premiumFeaturesDescription: "Actualiza para desbloquear más",
   },
   paywallScreen: {
+    ...en.paywallScreen,
     welcomeTitle: "¡Bienvenido a Pro! 🎉",
     welcomeDescription: "Todo listo. Disfruta de todas las funciones premium.",
     loadingPaywall: "Cargando paywall...",

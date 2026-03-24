@@ -13,7 +13,6 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { Platform } from "react-native"
-import { makeRedirectUri } from "expo-auth-session"
 import * as Linking from "expo-linking"
 
 import { env, isConvex } from "../config/env"
@@ -25,6 +24,7 @@ import type {
   SignInCredentials,
   UpdateUserAttributes,
 } from "../types/auth"
+import { createAppUrl } from "../utils/appScheme"
 import { logger } from "../utils/Logger"
 import { clearOAuthState, consumeOAuthState, createOAuthState } from "../utils/oauthState"
 
@@ -290,11 +290,7 @@ function useSupabaseAuth(): UseAuthReturn {
           redirectTo = `${window.location.origin}/auth/callback`
         }
       } else {
-        redirectTo = makeRedirectUri({
-          scheme: "shipnative",
-          path: "auth/callback",
-          isTripleSlashed: true,
-        })
+        redirectTo = createAppUrl("auth/callback")
       }
       if (__DEV__) {
         logger.debug("[useAuth] Google OAuth redirectTo", { redirectTo })
@@ -479,11 +475,7 @@ function useSupabaseAuth(): UseAuthReturn {
           redirectTo = `${window.location.origin}/auth/callback`
         }
       } else {
-        redirectTo = makeRedirectUri({
-          scheme: "shipnative",
-          path: "auth/callback",
-          isTripleSlashed: true,
-        })
+        redirectTo = createAppUrl("auth/callback")
       }
       if (__DEV__) {
         logger.debug("[useAuth] Apple OAuth redirectTo", { redirectTo })

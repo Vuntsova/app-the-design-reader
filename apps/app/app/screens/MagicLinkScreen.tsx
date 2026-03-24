@@ -66,21 +66,12 @@ export const MagicLinkScreen = () => {
     setError("")
 
     try {
-      if (isConvex) {
-        // For Convex, we use the resend-otp provider
-        // This is handled via useAuthActions in the component
-        // Navigate to OTP screen which will handle the Convex flow
-        navigation.navigate("OTPVerification", { email: data.email, isConvex: true })
-      } else {
-        // For Supabase, send the OTP
-        const { error: signInError } = await signInWithMagicLink(data.email)
+      const { error: signInError } = await signInWithMagicLink(data.email)
 
-        if (signInError) {
-          setError(formatAuthError(signInError))
-        } else {
-          // Navigate to OTP verification screen
-          navigation.navigate("OTPVerification", { email: data.email, isConvex: false })
-        }
+      if (signInError) {
+        setError(formatAuthError(signInError))
+      } else {
+        navigation.navigate("OTPVerification", { email: data.email, isConvex })
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : t("magicLinkScreen:unexpectedError"))

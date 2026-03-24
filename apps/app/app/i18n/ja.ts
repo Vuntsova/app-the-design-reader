@@ -1,5 +1,5 @@
 import demoJa from "./demo-ja" // @demo remove-current-line
-import { Translations } from "./en"
+import en, { Translations } from "./en"
 
 const ja: Translations = {
   common: {
@@ -9,6 +9,7 @@ const ja: Translations = {
     logOut: "ログアウト", // @demo remove-current-line
   },
   welcomeScreen: {
+    ...en.welcomeScreen,
     postscript:
       "注目！ — このアプリはお好みの見た目では無いかもしれません(デザイナーがこのスクリーンを送ってこない限りは。もしそうなら公開しちゃいましょう！)",
     readyForLaunch: "このアプリはもう少しで公開できます！",
@@ -91,6 +92,7 @@ const ja: Translations = {
     premiumFeaturesDescription: "アップグレードしてさらに解放",
   },
   paywallScreen: {
+    ...en.paywallScreen,
     welcomeTitle: "Proへようこそ！🎉",
     welcomeDescription: "準備完了。プレミアム機能をすべてお楽しみください。",
     loadingPaywall: "ペイウォールを読み込み中...",

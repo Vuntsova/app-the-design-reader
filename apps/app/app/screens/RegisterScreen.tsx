@@ -29,13 +29,7 @@ export const RegisterScreen = () => {
   const { t } = useTranslation()
   const { theme } = useUnistyles()
   const navigation = useNavigation()
-  const {
-    signUp,
-    signInWithGoogle,
-    signInWithApple,
-    isLoading: authLoading,
-    isEmailVerified,
-  } = useAuth()
+  const { signUp, signInWithGoogle, signInWithApple, isLoading: authLoading } = useAuth()
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
@@ -68,15 +62,6 @@ export const RegisterScreen = () => {
     if (signUpError) {
       const formattedError = formatAuthError(signUpError)
       setError(formattedError)
-    } else {
-      // Signup successful
-      if (!isEmailVerified) {
-        // Email confirmation required - navigate to verification screen
-        // AppNavigator will handle this automatically, but we can navigate explicitly
-        // to ensure smooth UX
-        navigation.navigate("EmailVerification" as never)
-      }
-      // If email is confirmed, AppNavigator will automatically navigate to Main/Onboarding
     }
   }
 

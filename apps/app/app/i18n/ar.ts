@@ -1,5 +1,5 @@
 import demoAr from "./demo-ar" // @demo remove-current-line
-import { Translations } from "./en"
+import en, { Translations } from "./en"
 
 const ar: Translations = {
   common: {
@@ -9,6 +9,7 @@ const ar: Translations = {
     logOut: "تسجيل خروج", // @demo remove-current-line
   },
   welcomeScreen: {
+    ...en.welcomeScreen,
     postscript:
       "ربما لا يكون هذا هو الشكل الذي يبدو عليه تطبيقك مالم يمنحك المصمم هذه الشاشات وشحنها في هذه الحالة",
     readyForLaunch: "تطبيقك تقريبا جاهز للتشغيل",
@@ -90,6 +91,7 @@ const ar: Translations = {
     premiumFeaturesDescription: "قم بالترقية لفتح المزيد",
   },
   paywallScreen: {
+    ...en.paywallScreen,
     welcomeTitle: "مرحبًا بك في Pro! 🎉",
     welcomeDescription: "تم الإعداد. استمتع بجميع الميزات المميزة!",
     loadingPaywall: "جارٍ تحميل صفحة الاشتراك...",

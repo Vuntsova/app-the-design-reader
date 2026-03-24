@@ -104,25 +104,14 @@ export const OTPVerificationScreen = () => {
       setError("")
 
       try {
-        if (useConvexAuth) {
-          // For Convex, verification is handled via useAuthActions
-          // The code is submitted to the resend-otp provider
-          // This will be handled by the ConvexAuthProvider
-          // For now, we show an error guiding the user
-          setError(t("otpVerificationScreen:convexInstructions"))
+        const { error: verifyError } = await verifyOtp(email, otpCode)
+
+        if (verifyError) {
+          setError(formatAuthError(verifyError))
           verificationAttempted.current = false
         } else {
-          // For Supabase
-          const { error: verifyError } = await verifyOtp(email, otpCode)
-
-          if (verifyError) {
-            setError(formatAuthError(verifyError))
-            verificationAttempted.current = false
-          } else {
-            // Success! Re-initialize auth state
-            await initialize()
-            // Navigation will be handled by AppNavigator based on auth state
-          }
+          await initialize()
+          // Navigation will be handled by AppNavigator based on auth state
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : t("otpVerificationScreen:unexpectedError"))
@@ -131,7 +120,7 @@ export const OTPVerificationScreen = () => {
         setLoading(false)
       }
     },
-    [email, useConvexAuth, verifyOtp, initialize, loading, t],
+    [email, verifyOtp, initialize, loading, t],
   )
 
   // Handle code completion (auto-submit)
@@ -151,30 +140,24 @@ export const OTPVerificationScreen = () => {
     setResendSuccess(false)
 
     try {
-      if (useConvexAuth) {
-        // For Convex, resend is handled via useAuthActions
-        setError(t("otpVerificationScreen:convexResendInstructions"))
-      } else {
-        // For Supabase
-        const { error: resendError } = await signInWithMagicLink(email)
+      const { error: resendError } = await signInWithMagicLink(email)
 
-        if (resendError) {
-          setError(formatAuthError(resendError))
-        } else {
-          setResendSuccess(true)
-          setCountdown(TIMING.COUNTDOWN_RESEND_EMAIL)
-          // Clear code for new attempt
-          setCode("")
-          verificationAttempted.current = false
-          // Clear success message after duration
-          if (resendSuccessTimeoutRef.current) {
-            clearTimeout(resendSuccessTimeoutRef.current)
-          }
-          resendSuccessTimeoutRef.current = setTimeout(() => {
-            setResendSuccess(false)
-            resendSuccessTimeoutRef.current = null
-          }, TIMING.SUCCESS_MESSAGE_DURATION)
+      if (resendError) {
+        setError(formatAuthError(resendError))
+      } else {
+        setResendSuccess(true)
+        setCountdown(TIMING.COUNTDOWN_RESEND_EMAIL)
+        // Clear code for new attempt
+        setCode("")
+        verificationAttempted.current = false
+        // Clear success message after duration
+        if (resendSuccessTimeoutRef.current) {
+          clearTimeout(resendSuccessTimeoutRef.current)
         }
+        resendSuccessTimeoutRef.current = setTimeout(() => {
+          setResendSuccess(false)
+          resendSuccessTimeoutRef.current = null
+        }, TIMING.SUCCESS_MESSAGE_DURATION)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : t("otpVerificationScreen:unexpectedError"))

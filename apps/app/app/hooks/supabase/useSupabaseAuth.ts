@@ -7,13 +7,13 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { Platform } from "react-native"
-import { makeRedirectUri } from "expo-auth-session"
 import * as _Linking from "expo-linking"
 import type { User as SupabaseUser, Session as SupabaseSession } from "@supabase/supabase-js"
 
 import { env } from "../../config/env"
 import { supabase } from "../../services/supabase"
 import { useAuthStore } from "../../stores/auth"
+import { createAppUrl } from "../../utils/appScheme"
 import { logger } from "../../utils/Logger"
 import { clearOAuthState, consumeOAuthState, createOAuthState } from "../../utils/oauthState"
 
@@ -351,7 +351,7 @@ export function useSupabaseAuth(): SupabaseAuthState & SupabaseAuthActions {
           ? typeof window !== "undefined"
             ? `${window.location.origin}/auth/callback`
             : undefined
-          : makeRedirectUri({ scheme: "shipnative", path: "auth/callback", isTripleSlashed: true })
+          : createAppUrl("auth/callback")
       const oauthState = createOAuthState()
 
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -400,7 +400,7 @@ export function useSupabaseAuth(): SupabaseAuthState & SupabaseAuthActions {
           ? typeof window !== "undefined"
             ? `${window.location.origin}/auth/callback`
             : undefined
-          : makeRedirectUri({ scheme: "shipnative", path: "auth/callback", isTripleSlashed: true })
+          : createAppUrl("auth/callback")
       const oauthState = createOAuthState()
 
       const { data, error } = await supabase.auth.signInWithOAuth({

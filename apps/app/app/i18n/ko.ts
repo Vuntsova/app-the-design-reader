@@ -1,5 +1,5 @@
 import demoKo from "./demo-ko" // @demo remove-current-line
-import { Translations } from "./en"
+import en, { Translations } from "./en"
 
 const ko: Translations = {
   common: {
@@ -9,6 +9,7 @@ const ko: Translations = {
     logOut: "로그아웃", // @demo remove-current-line
   },
   welcomeScreen: {
+    ...en.welcomeScreen,
     postscript:
       "잠깐! — 지금 보시는 것은 아마도 당신의 앱의 모양새가 아닐겁니다. (디자이너분이 이렇게 건내주셨다면 모를까요. 만약에 그렇다면, 이대로 가져갑시다!) ",
     readyForLaunch: "출시 준비가 거의 끝난 나만의 앱!",
@@ -90,6 +91,7 @@ const ko: Translations = {
     premiumFeaturesDescription: "업그레이드하여 더 많은 기능을 사용하세요",
   },
   paywallScreen: {
+    ...en.paywallScreen,
     welcomeTitle: "Pro에 오신 것을 환영해요! 🎉",
     welcomeDescription: "모두 준비되었습니다. 모든 프리미엄 기능을 즐겨보세요!",
     loadingPaywall: "페이월 로딩 중...",

@@ -4,7 +4,7 @@
   "private": true,
   "main": "index.tsx",
   "scripts": {
-    "dev": "EXPO_IOS_SIMULATOR_DEVICE_NAME=D44A1507-3E39-4AA2-9662-F1CC7C832D68 expo start --dev-client",
+    "dev": "expo start --dev-client",
     "start": "expo start --dev-client",
     "android": "expo run:android",
     "ios": "expo run:ios",
