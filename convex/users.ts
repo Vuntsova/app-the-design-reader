@@ -4,9 +4,10 @@
  * Functions for managing user data.
  */
 
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
 import { query, mutation } from "./_generated/server"
 import { auth } from "./auth"
+import { requireAdmin } from "./lib/security"
 
 /**
  * Get the current authenticated user
@@ -123,6 +124,47 @@ export const updateLastSeen = mutation({
     await ctx.db.patch(userId, {
       lastSeenAt: Date.now(),
     })
+  },
+})
+
+/**
+ * Set a user's role (admin-only)
+ *
+ * Pattern: any role-changing mutation MUST call requireAdmin first.
+ * The `role` field on `users` has no database-level constraint beyond the
+ * schema validator, so server-side guards are the only thing keeping a
+ * regular user from promoting themselves. Copy this pattern for any
+ * mutation that grants privileges or modifies another user's record.
+ */
+export const setUserRole = mutation({
+  args: {
+    userId: v.id("users"),
+    role: v.union(v.literal("user"), v.literal("admin"), v.literal("moderator")),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx)
+
+    // Last-admin lockout guard: prevent demoting the only remaining admin,
+    // which would leave the system with no one able to grant roles. The
+    // `by_role` index on `users` makes this a cheap point lookup.
+    if (args.role !== "admin") {
+      const target = await ctx.db.get(args.userId)
+      if (target?.role === "admin") {
+        const admins = await ctx.db
+          .query("users")
+          .withIndex("by_role", (q) => q.eq("role", "admin"))
+          .collect()
+        if (admins.length <= 1) {
+          throw new ConvexError(
+            "Cannot demote the last admin. Promote another user to admin first.",
+          )
+        }
+      }
+    }
+
+    await ctx.db.patch(args.userId, { role: args.role })
+
+    return await ctx.db.get(args.userId)
   },
 })
 

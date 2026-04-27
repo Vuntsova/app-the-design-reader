@@ -14,7 +14,7 @@
 import { v } from "convex/values"
 import { query, mutation, internalMutation } from "./_generated/server"
 import { Id } from "./_generated/dataModel"
-import { requireAuth, getAuthUserId } from "./lib/security"
+import { requireAuth } from "./lib/security"
 
 // ============================================================================
 // Presence Functions
@@ -232,13 +232,13 @@ export const broadcast = mutation({
     payload: v.any(),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx)
+    const userId = await requireAuth(ctx)
 
     const messageId = await ctx.db.insert("broadcasts", {
       channel: args.channel,
       event: args.event,
       payload: args.payload,
-      senderId: userId ?? undefined,
+      senderId: userId,
       createdAt: Date.now(),
       expiresAt: Date.now() + 30000, // 30 second TTL
     })

@@ -144,6 +144,28 @@ export async function requireRole(
 }
 
 /**
+ * Require that the current authenticated user has the `admin` role.
+ * Throws SecurityError if they're not signed in or not an admin.
+ *
+ * Use this at the top of any mutation that grants/revokes privileges,
+ * touches other users' data, or otherwise needs to be admin-gated.
+ *
+ * @example
+ * export const setUserRole = mutation({
+ *   args: { userId: v.id("users"), role: v.string() },
+ *   handler: async (ctx, args) => {
+ *     await requireAdmin(ctx)
+ *     await ctx.db.patch(args.userId, { role: args.role })
+ *   },
+ * })
+ */
+export async function requireAdmin(ctx: AuthContext): Promise<Id<"users">> {
+  const userId = await requireAuth(ctx)
+  await requireRole(ctx, userId, ["admin"])
+  return userId
+}
+
+/**
  * Filter query results to only include user's own documents
  *
  * @example

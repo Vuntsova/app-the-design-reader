@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 
+import { isConvex } from "../config/env"
 import { getBackend, isUsingMockBackend } from "../services/backend"
 import type { BroadcastChannel, RealtimeChannel } from "../services/backend/types"
 import type { RealtimeMessage, TypingState } from "../types/realtime"
@@ -91,7 +92,51 @@ export interface UseRealtimeMessagesReturn {
  * }
  * ```
  */
-export function useRealtimeMessages(
+/**
+ * Convex no-op stub.
+ *
+ * This hook is Supabase-shaped: it calls `backend.db.*` under the hood, which
+ * throws on Convex (see `backend/convex/database.ts`). Convex apps are
+ * realtime-by-default — define a `messages` query in `convex/messages.ts`
+ * and use `useQuery(api.messages.list, { channelId })` from `convex/react`
+ * instead.
+ *
+ * We expose a stub on Convex builds so accidental imports still type-check
+ * and render (returning empty state + rejecting mutations), and we log a
+ * loud dev warning so the mistake is caught early.
+ */
+function useConvexRealtimeMessagesStub(
+  options: UseRealtimeMessagesOptions,
+): UseRealtimeMessagesReturn {
+  useEffect(() => {
+    if (__DEV__) {
+      logger.warn(
+        "[useRealtimeMessages] Not supported on Convex builds. Define a messages query in convex/messages.ts and use useQuery(api.messages.list) instead.",
+        { channelId: options.channelId },
+      )
+    }
+  }, [options.channelId])
+
+  const reject = useCallback(
+    async () => ({ error: new Error("useRealtimeMessages is Supabase-only; use Convex useQuery/useMutation") }),
+    [],
+  )
+
+  return {
+    messages: options.initialMessages ?? [],
+    loading: false,
+    error: null,
+    isConnected: false,
+    typingUsers: [],
+    sendMessage: reject,
+    updateMessage: reject,
+    deleteMessage: reject,
+    setTyping: () => {},
+    refresh: async () => {},
+  }
+}
+
+function useSupabaseRealtimeMessages(
   options: UseRealtimeMessagesOptions,
 ): UseRealtimeMessagesReturn {
   const {
@@ -512,3 +557,12 @@ export function useRealtimeMessages(
     refresh,
   }
 }
+
+// Build-time selection. `isConvex` is a constant for the lifetime of the
+// build, so the selected hook is stable across renders and Rules of Hooks
+// are satisfied. Same pattern as `useSelectedAuthImpl` in `useAuth.ts`.
+export const useRealtimeMessages: (
+  options: UseRealtimeMessagesOptions,
+) => UseRealtimeMessagesReturn = isConvex
+  ? useConvexRealtimeMessagesStub
+  : useSupabaseRealtimeMessages

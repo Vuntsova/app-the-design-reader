@@ -80,8 +80,9 @@ export function validateCertificatePin(hostname: string, certificateHash: string
   }
 
   // In production, this should validate against native certificate pinning
-  // For now, log a warning if we're in production without native implementation
-  if (!__DEV__) {
+  // For now, log a warning in dev only - production warnings are noise without
+  // a native implementation in place.
+  if (__DEV__) {
     console.warn(
       "[CertificatePinning] Certificate pinning is configured but native implementation is required",
       { hostname },

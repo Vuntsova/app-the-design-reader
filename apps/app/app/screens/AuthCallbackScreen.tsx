@@ -15,6 +15,15 @@ import { logger } from "@/utils/Logger"
 import { consumeOAuthState } from "@/utils/oauthState"
 
 /**
+ * How long to wait after handing the OAuth code to ConvexAuthProvider before
+ * declaring the callback flow complete. The provider processes the code
+ * reactively and updates `useConvexAuth().isAuthenticated`; we cannot subscribe
+ * to that hook from inside this useEffect (rules of hooks), so we wait a fixed
+ * window for the provider to settle. Tune if you observe flicker on slow networks.
+ */
+const CONVEX_OAUTH_SETTLE_TIMEOUT_MS = 2000
+
+/**
  * Parse OAuth tokens from URL hash fragment (web only)
  * Supabase OAuth returns tokens in the hash: #access_token=...&refresh_token=...
  */
@@ -114,16 +123,34 @@ export const AuthCallbackScreen = () => {
                 // Dynamic import to avoid loading Convex in Supabase builds
                 // Dynamic import to ensure Convex auth is available
                 await import("@convex-dev/auth/react")
-                // Note: The flow is handled by the ConvexAuthProvider detecting the code
-                // and completing the flow automatically
+                // ----------------------------------------------------------
+                // Session update is reactive
+                //
+                // ConvexAuthProvider detects the OAuth code in the URL and
+                // completes the flow on its own. There's no imperative API
+                // to call here — the provider rerenders consumers of
+                // `useConvexAuth()` once `isAuthenticated` flips to true.
+                //
+                // If your app needs to create/sync a server-side user record
+                // after sign-in (e.g. inserting into a `users` table, copying
+                // profile fields from the OAuth provider), add a `syncUser`
+                // mutation in `convex/users.ts` and call it from a component
+                // that observes `useConvexAuth().isAuthenticated` — typically
+                // the root navigator or a dedicated `useEnsureUserRecord` hook.
+                // Don't call it from this screen; the auth state isn't yet
+                // available to the Convex client at this point.
+                // ----------------------------------------------------------
 
                 // Clear the URL params
                 if (typeof window !== "undefined") {
                   window.history.replaceState(null, "", window.location.pathname)
                 }
 
-                // Wait for the auth state to update
-                await new Promise((resolve) => setTimeout(resolve, 2000))
+                // Wait for the provider to settle. See the constant's comment
+                // above for why this is a fixed delay rather than a poll.
+                await new Promise((resolve) =>
+                  setTimeout(resolve, CONVEX_OAUTH_SETTLE_TIMEOUT_MS),
+                )
               } catch (error) {
                 logger.warn("[AuthCallback] Convex auth import failed", { error })
               }

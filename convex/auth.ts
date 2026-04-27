@@ -4,6 +4,18 @@
  * Configure authentication providers for your app.
  * This is the equivalent of Supabase Auth configuration.
  *
+ * OAuth token validation:
+ * Token verification (id_token signature checks, audience/issuer validation,
+ * code exchange, nonce checks) is delegated entirely to Convex Auth's built-in
+ * providers via `convexAuth({ providers: [...] })`. Each provider in the
+ * `providers` array (Google, Apple, GitHub, Password, Email) implements its
+ * own verification contract — we do not re-implement it here.
+ *
+ * If you extend this file, do NOT add custom token-trust logic (e.g. accepting
+ * a raw `id_token` from the client and creating a session) without first
+ * understanding the verification contract of the underlying provider. Skipping
+ * verification turns your app into an open authentication oracle.
+ *
  * Learn more: https://labs.convex.dev/auth
  */
 

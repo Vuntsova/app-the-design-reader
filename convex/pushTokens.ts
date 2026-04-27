@@ -9,6 +9,7 @@
 import { v } from "convex/values"
 import { query, mutation } from "./_generated/server"
 import { auth } from "./auth"
+import { requireAdmin, SecurityError } from "./lib/security"
 
 /**
  * Register or update a push token for the current user
@@ -35,9 +36,24 @@ export const register = mutation({
       .first()
 
     if (existingToken) {
-      // Update existing token
+      // A token already exists. Two legitimate cases:
+      //   1. Same user re-registering (app relaunch, refresh) — just patch.
+      //   2. Different user on the same physical device after the previous
+      //      owner logged out — `deactivateAll` flips `isActive` to false, so
+      //      the new owner can claim it.
+      // The illegitimate case we block: an attacker hijacking an *active*
+      // user's token to intercept their notifications (incl. password reset /
+      // MFA pushes). If a different user holds the token AND it's still
+      // active, refuse to rebind.
+      if (existingToken.userId !== userId && existingToken.isActive) {
+        throw new SecurityError(
+          "Push token is registered to another active user",
+          "UNAUTHORIZED"
+        )
+      }
+
       await ctx.db.patch(existingToken._id, {
-        userId, // In case token was transferred to different user
+        userId,
         platform: args.platform,
         deviceId: args.deviceId,
         isActive: true,
@@ -138,15 +154,17 @@ export const listMyTokens = query({
 })
 
 /**
- * Get all active push tokens for a user (admin use)
- * Returns tokens for sending notifications to a specific user
+ * Get all active push tokens for a user (admin only).
+ * Used by server-side notification senders that need to deliver to a
+ * specific user. Listing another user's tokens enables enumeration and
+ * targeted notification attacks, so this is gated behind requireAdmin.
  */
 export const getActiveTokensForUser = query({
   args: {
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    // You may want to add admin check here
+    await requireAdmin(ctx)
     return await ctx.db
       .query("pushTokens")
       .withIndex("by_userId", (q) => q.eq("userId", args.userId))

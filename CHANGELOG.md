@@ -5,6 +5,39 @@ All notable changes to Shipnative will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0-rc11] - 2026-04-28
+
+### Security
+
+- **Push token hijack prevention**: `convex/pushTokens.ts` `register` now refuses to re-bind a token that's still actively held by another user. Device handoff still works (when the previous owner logs out, `deactivateAll` marks the row inactive and the new owner can claim it), but an attacker who somehow learned an active user's token can't claim it to intercept password-reset / MFA pushes.
+- **`getActiveTokensForUser` admin gate**: `convex/pushTokens.ts` query now calls `requireAdmin(ctx)`. Previously any authenticated user could enumerate another user's device tokens.
+- **`broadcast` requires auth**: `convex/realtime.ts` `broadcast` now uses `requireAuth` instead of `getAuthUserId`, so unauthenticated callers can no longer publish events to channels.
+- **Subscription trust boundary documented**: `apps/app/app/stores/subscriptionStore.ts` now carries a header explaining that the persisted `isPro` flag is a UX cache only — server-side functions must verify entitlement against RevenueCat or a webhook-synced server table. Canonical reference added in `vibe/MONETIZATION.md` under "Trust Boundary".
+- **Widget HTTP error log redaction**: `convex/http.ts` widget endpoints now log only `errorName` + `errorCode` instead of the raw error object, preventing upstream API customer IDs / query details from leaking via server logs.
+- **Sentry user PII in dev logs**: `apps/app/app/services/sentry.ts` no longer falls back to `user.email` when logging the user context — only the opaque `user.id` is logged.
+- **OAuth state TTL + atomic consumption**: `apps/app/app/utils/oauthState.ts` now enforces a 10-minute TTL on stored state values and reads them atomically (read-and-clear) to prevent TOCTOU replay.
+- **`requireAdmin` helper**: New `requireAdmin(ctx)` in `convex/lib/security.ts`. Any role-changing or destructive Convex mutation must call it first. `setUserRole` in `convex/users.ts` is the canonical example, including a last-admin lockout guard.
+- **`profiles` world-readable warning**: Added an explicit warning block in `supabase/schema.sql` documenting that `USING (true)` lets anonymous users read every row, with a list of fields that must never live on `profiles`.
+- **`private_profiles` example migration**: New migration `supabase/migrations/20260428000000_add_private_profiles_example.sql` shows the canonical owner-only sibling table for PII (email, phone, billing).
+
+### Backend
+
+- **`backend.db` is Supabase-only**: The Convex implementation now throws a clear error pointing customers at `useQuery` from `convex/_generated/api`. Mock-mode CRUD shims still work with no credentials.
+- **Realtime hooks no-op on Convex**: `useRealtimeMessages`, `useRealtimePresence`, and `useRealtimeSubscription` are stubs when `EXPO_PUBLIC_BACKEND_PROVIDER=convex` — Convex's `useQuery` is already reactive, so there's nothing to bridge.
+
+### Hygiene
+
+- **`clearPendingSyncs()` on logout**: The auth store cancels in-flight preference syncs on sign-out, preventing MMKV writes from one session leaking into the next user's session.
+- **Convex auth comment block**: Added a header in `convex/auth.ts` documenting that token verification is delegated to `convexAuth({ providers })` and warning extenders not to add custom token-trust logic.
+
+### Docs
+
+- **Patches README** (`patches/README.md`): Documents `@bittingz+expo-widgets+3.0.2.patch` and how to add or remove patches.
+- **Error handling** (`vibe/ERROR_HANDLING.md`): New file explaining what `ErrorBoundary` catches (render errors only) and pointing customers at Sentry for async/event handler coverage.
+- **AGENTS.md**: Added MMKV call-site references, OAuth state TTL note, `requireAdmin` pointer, `private_profiles` pattern, `clearPendingSyncs` on logout, and the corrected `backend.db` description.
+- **vibe/BACKEND.md**: Mirrored the world-readable warning on the inline `profiles` example, replaced the broken `metadata->>'role'` role-based access pattern with a real `role text` column, added a "Storing private user data" subsection, added a Convex "Security helpers" subsection with a `setUserRole` example, and noted the realtime hooks no-op on Convex.
+- **mintlify_docs**: Updated `core-features/backend.mdx` with the `private_profiles` pattern and `realtime.mdx` with a Convex-uses-`useQuery` callout.
+
 ## [1.0.0-rc10] - March 2026
 
 ### Fixed

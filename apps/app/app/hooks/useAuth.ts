@@ -24,9 +24,15 @@ import type {
   SignInCredentials,
   UpdateUserAttributes,
 } from "../types/auth"
+import { clearPendingSyncs } from "../services/preferencesSync"
 import { createAppUrl } from "../utils/appScheme"
 import { logger } from "../utils/Logger"
 import { clearOAuthState, consumeOAuthState, createOAuthState } from "../utils/oauthState"
+import { isStorageDegraded } from "../utils/webStorageEncryption"
+
+// OAuth state CSRF + TTL handling lives in `utils/oauthState.ts` so every
+// auth code path (this hook, `hooks/supabase/useSupabaseAuth.ts`, the
+// `AuthCallbackScreen`) gets the same guarantees.
 
 // ============================================================================
 // Web Browser Import (Platform-Specific)
@@ -137,6 +143,15 @@ function useSupabaseAuth(): UseAuthReturn {
 
   // Initialize auth state
   useEffect(() => {
+    // Surface degraded web storage mode (localStorage fallback) so callers
+    // know tokens may persist across browser restarts on this device.
+    if (Platform.OS === "web" && isStorageDegraded()) {
+      logger.warn(
+        "[useAuth] Web secure storage running in degraded mode (localStorage fallback). " +
+          "Auth tokens will persist across browser restarts on this device.",
+      )
+    }
+
     // Get initial session
     supabase.auth
       .getSession()
@@ -180,6 +195,9 @@ function useSupabaseAuth(): UseAuthReturn {
 
   const signOut = useCallback(async () => {
     setLoading(true)
+    // Drop any in-flight preference retries so they don't run under the
+    // next signed-in user's session.
+    clearPendingSyncs()
     const { error } = await supabase.auth.signOut({ scope: "local" })
     setLoading(false)
     return { error }
@@ -324,14 +342,16 @@ function useSupabaseAuth(): UseAuthReturn {
           const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo)
 
           if (__DEV__) {
+            // Do NOT log result.url: it may contain access_token / refresh_token
+            // / authorization code in the fragment or query string.
             logger.debug("[useAuth] Google OAuth session result", {
               type: result.type,
-              url: result.url ?? null,
+              hasUrl: !!result.url,
             })
           }
 
           if (result.type === "success" && result.url) {
-            const urlStr = result.url
+            let urlStr = result.url
             const getParam = (name: string) => {
               const regex = new RegExp(`[?&|#]${name}=([^&|#]*)`)
               const match = urlStr.match(regex)
@@ -342,6 +362,9 @@ function useSupabaseAuth(): UseAuthReturn {
             const refreshToken = getParam("refresh_token")
             const code = getParam("code")
             const state = getParam("state")
+            // Drop the raw URL once tokens are extracted so it cannot leak into
+            // later logs, error messages, or Sentry breadcrumbs.
+            urlStr = ""
 
             if (__DEV__) {
               logger.debug("[useAuth] Google OAuth callback params", {
@@ -380,11 +403,25 @@ function useSupabaseAuth(): UseAuthReturn {
                   codePrefix: code.slice(0, 8),
                 })
               }
+              // Race the exchange against a 3s timeout. If the exchange loses,
+              // we fall through to waitForSession; the late-resolving exchange
+              // must not overwrite session state set by the fallback path.
+              let timedOut = false
               const exchangePromise = supabase.auth.exchangeCodeForSession(code)
               exchangePromise.catch(() => undefined)
+              exchangePromise.then((late: unknown) => {
+                if (timedOut) return
+                // Loser-of-race noop: the awaited result below handles the win path.
+                void late
+              })
               const exchangeResult = await Promise.race([
                 exchangePromise,
-                new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000)),
+                new Promise<null>((resolve) =>
+                  setTimeout(() => {
+                    timedOut = true
+                    resolve(null)
+                  }, 3000),
+                ),
               ])
               if (exchangeResult && "error" in exchangeResult && exchangeResult.error) {
                 logger.error(
@@ -509,14 +546,16 @@ function useSupabaseAuth(): UseAuthReturn {
           const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo)
 
           if (__DEV__) {
+            // Do NOT log result.url: it may contain access_token / refresh_token
+            // / authorization code in the fragment or query string.
             logger.debug("[useAuth] Apple OAuth session result", {
               type: result.type,
-              url: result.url ?? null,
+              hasUrl: !!result.url,
             })
           }
 
           if (result.type === "success" && result.url) {
-            const urlStr = result.url
+            let urlStr = result.url
             const getParam = (name: string) => {
               const regex = new RegExp(`[?&|#]${name}=([^&|#]*)`)
               const match = urlStr.match(regex)
@@ -527,6 +566,9 @@ function useSupabaseAuth(): UseAuthReturn {
             const refreshToken = getParam("refresh_token")
             const code = getParam("code")
             const state = getParam("state")
+            // Drop the raw URL once tokens are extracted so it cannot leak into
+            // later logs, error messages, or Sentry breadcrumbs.
+            urlStr = ""
 
             if (__DEV__) {
               logger.debug("[useAuth] Apple OAuth callback params", {
@@ -546,11 +588,25 @@ function useSupabaseAuth(): UseAuthReturn {
                   codePrefix: code.slice(0, 8),
                 })
               }
+              // Race the exchange against a 3s timeout. If the exchange loses,
+              // we fall through to waitForSession; the late-resolving exchange
+              // must not overwrite session state set by the fallback path.
+              let timedOut = false
               const exchangePromise = supabase.auth.exchangeCodeForSession(code)
               exchangePromise.catch(() => undefined)
+              exchangePromise.then((late: unknown) => {
+                if (timedOut) return
+                // Loser-of-race noop: the awaited result below handles the win path.
+                void late
+              })
               const exchangeResult = await Promise.race([
                 exchangePromise,
-                new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000)),
+                new Promise<null>((resolve) =>
+                  setTimeout(() => {
+                    timedOut = true
+                    resolve(null)
+                  }, 3000),
+                ),
               ])
               if (exchangeResult && "error" in exchangeResult && exchangeResult.error) {
                 logger.error(
@@ -839,6 +895,9 @@ function useConvexAuthImpl(): UseAuthReturn {
   // Sign out
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const signOut = useCallback(async () => {
+    // Drop any in-flight preference retries so they don't run under the
+    // next signed-in user's session.
+    clearPendingSyncs()
     const result = await passwordAuth.signOut()
     // Clear session from auth store
     useAuthStore.getState().setSession(null)

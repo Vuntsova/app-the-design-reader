@@ -129,6 +129,14 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 -- Enable RLS
 alter table public.profiles enable row level security;
 
+-- !!! WORLD-READABLE TABLE !!!
+-- The SELECT policy below uses USING (true), so any user — including
+-- anonymous visitors — can read every row. This is intentional for public
+-- profile discovery, but it is a footgun. Never store PII (email, phone,
+-- billing info, government IDs) on this table. Put private fields on a
+-- separate per-user table. See "Storing private user data" below and
+-- `supabase/schema.sql:60-86` for the full warning.
+
 -- Policies
 create policy "Public profiles are viewable by everyone"
   on profiles for select
@@ -356,13 +364,14 @@ create table public.audit_logs (
 alter table public.audit_logs enable row level security;
 
 -- Only admins can view audit logs
+-- (Assumes a `role text` column on profiles — see "Pattern 3: Role-Based Access".)
 create policy "Only admins can view audit logs"
   on audit_logs for select
   using ( 
     exists (
       select 1 from profiles
       where profiles.id = auth.uid()
-      and profiles.metadata->>'role' = 'admin'
+      and profiles.role = 'admin'
     )
   );
 
@@ -448,7 +457,16 @@ create policy "Owner update access"
 
 ### Pattern 3: Role-Based Access
 
+Add a dedicated `role` column to `profiles` (or a separate `user_roles` table for multi-role setups). Don't stuff roles into `metadata->>'role'` — there's no `metadata` column on the default `profiles` schema, and a typed column gets you a CHECK constraint and indexable lookups for free.
+
 ```sql
+-- One-time: add the column
+alter table public.profiles
+  add column if not exists role text not null default 'user'
+    check (role in ('user', 'admin', 'moderator'));
+
+create index if not exists profiles_role_idx on public.profiles(role);
+
 -- Admin can do everything, users can read
 create policy "Admins have full access"
   on table_name for all
@@ -456,7 +474,7 @@ create policy "Admins have full access"
     exists (
       select 1 from profiles
       where profiles.id = auth.uid()
-      and profiles.metadata->>'role' = 'admin'
+      and profiles.role = 'admin'
     )
   );
 
@@ -464,6 +482,31 @@ create policy "Users can read"
   on table_name for select
   using ( true );
 ```
+
+### Storing private user data
+
+Anything you would not want a stranger to read — email, phone, mailing address, billing info, Stripe customer ID, government IDs — must NOT live on `profiles`. The `profiles` SELECT policy uses `USING (true)`, so any anonymous visitor can read every row.
+
+The pattern is a sibling table with an owner-only policy. See `supabase/migrations/20260428000000_add_private_profiles_example.sql` for a worked example:
+
+```sql
+CREATE TABLE public.private_profiles (
+    user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    email_contact TEXT,
+    phone TEXT,
+    -- ... whatever PII you need
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.private_profiles ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can read own private profile"
+    ON public.private_profiles FOR SELECT
+    USING (auth.uid() = user_id);
+```
+
+Apply the same `auth.uid() = user_id` pattern for INSERT and UPDATE.
 
 ---
 
@@ -770,3 +813,65 @@ Key differences from Supabase:
 - **Queries**: Reactive hooks (`useQuery`, `useMutation`)
 - **Real-time**: Built-in - all queries are automatically reactive
 - **Functions**: Server functions in `convex/*.ts`
+
+### Security helpers
+
+Convex has no database-level RLS, so security is enforced at the function boundary. The helpers in `convex/lib/security.ts` are the canonical pattern — call one of them at the top of every query and mutation that touches user data.
+
+| Helper | What it does |
+|--------|--------------|
+| `requireAuth(ctx)` | Throws `UNAUTHENTICATED` if not signed in. Returns the userId. |
+| `requireOwnership(ctx, table, id, userId, ownerField?)` | Throws if the document doesn't belong to `userId`. |
+| `requireRole(ctx, userId, allowedRoles[])` | Throws `FORBIDDEN` if the user's `role` field isn't in the list. |
+| `requireAdmin(ctx)` | Shorthand for `requireAuth` + `requireRole(["admin"])`. Use this for any role-changing or destructive mutation. |
+
+Example — `setUserRole` from `convex/users.ts`:
+
+```ts
+export const setUserRole = mutation({
+  args: { userId: v.id("users"), role: v.union(v.literal("user"), v.literal("admin"), v.literal("moderator")) },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx)
+    await ctx.db.patch(args.userId, { role: args.role })
+  },
+})
+```
+
+The real implementation also includes a **last-admin lockout guard**: it refuses to demote the only remaining admin, which would leave the system unable to grant roles to anyone ever again. Copy that guard whenever a mutation can change a privileged role.
+
+---
+
+## `backend.db` is Supabase-only
+
+`backend.db` is Supabase-only. Calling it on Convex throws. For Convex queries and mutations, use `useQuery` / `useMutation` from `convex/react` with the generated API.
+
+The Convex implementation of `backend.db.{query,get,insert,update,delete,upsert,rpc}` throws this error at runtime when real Convex credentials are configured:
+
+```
+backend.db is Supabase-only. On Convex, import generated client from 'convex/_generated/api' and use useQuery/useMutation directly. See vibe/BACKEND.md for the pattern.
+```
+
+Mock mode (no Convex credentials) keeps the in-memory CRUD shims so local dev and tests still work.
+
+### Convex query pattern
+
+```tsx
+import { useQuery, useMutation } from "convex/react"
+import { api } from "@/convex/_generated/api"
+
+export function ProfileScreen({ userId }: { userId: string }) {
+  const profile = useQuery(api.profiles.get, { userId })
+  const updateProfile = useMutation(api.profiles.update)
+
+  if (profile === undefined) return null // loading
+  return <Text onPress={() => updateProfile({ userId, name: "New" })}>{profile.name}</Text>
+}
+```
+
+`useQuery` is reactive — the component re-renders automatically when the underlying data changes. No manual refetch needed.
+
+### Realtime hooks on Convex
+
+`useRealtimeMessages`, `useRealtimePresence`, and friends are built on top of `backend.db` and Supabase's Postgres Changes channel. Because `backend.db` throws on Convex, these hooks are **no-op stubs** when `EXPO_PUBLIC_BACKEND_PROVIDER=convex`.
+
+For Convex realtime, just use `useQuery` from the generated API directly. Every Convex query is reactive by default — there is no separate "realtime" surface to subscribe to. See [CONVEX.md](./CONVEX.md) for examples of chat and presence patterns implemented as plain queries and mutations.

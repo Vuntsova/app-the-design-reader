@@ -57,7 +57,35 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 -- Enable Row Level Security
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
--- Profiles table is viewable by everyone
+-- =====================================================================
+-- !!! WARNING: WORLD-READABLE TABLE !!!
+-- =====================================================================
+-- The SELECT policy below uses `USING (true)`, meaning ANY user
+-- (including anonymous/unauthenticated) can read EVERY row in this table.
+--
+-- This is intentional for public profile discovery (e.g. showing
+-- display names and avatars to other users), but it is a footgun:
+--
+--   NEVER store PII in this table:
+--     - email addresses
+--     - phone numbers
+--     - mailing or billing addresses
+--     - payment info / Stripe customer IDs
+--     - government IDs
+--     - anything else you would not want a stranger to see
+--
+-- For private user data, create a SEPARATE table with a per-user policy:
+--
+--     CREATE POLICY "Users can read own private data"
+--         ON public.private_profiles
+--         FOR SELECT
+--         USING (auth.uid() = user_id);
+--
+-- See `supabase/migrations/20260428000000_add_private_profiles_example.sql`
+-- for a worked example, and `vibe/SECURITY.md` for the full pattern.
+-- =====================================================================
+
+-- Profiles table is viewable by everyone (public discovery only — see warning above)
 DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.profiles;
 CREATE POLICY "Public profiles are viewable by everyone"
     ON public.profiles
@@ -356,7 +384,11 @@ CREATE TABLE IF NOT EXISTS public.waitlist (
 ALTER TABLE public.waitlist ENABLE ROW LEVEL SECURITY;
 
 -- Policies for waitlist table
--- Allow anonymous inserts (for waitlist form submissions)
+-- NOTE: The INSERT policy below uses `WITH CHECK (true)` so anonymous
+-- visitors can sign up from the marketing page. This is intentional, but
+-- means you should rate-limit at the edge (Cloudflare, Vercel, or the
+-- Supabase Edge Function) to prevent spam — RLS does not protect against
+-- flood inserts. SELECT is locked down via `USING (false)` below.
 DROP POLICY IF EXISTS "Anyone can add to waitlist" ON public.waitlist;
 CREATE POLICY "Anyone can add to waitlist"
     ON public.waitlist

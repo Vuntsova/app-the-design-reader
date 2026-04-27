@@ -40,6 +40,81 @@ type PushTokenInsert = SupabaseDatabase["public"]["Tables"]["push_tokens"]["Inse
 // Storage keys (must match the keys used in theme context and notification store)
 const THEME_STORAGE_KEY = "shipnative.themeScheme"
 
+// ---------------------------------------------------------------------
+// Retry queue for fire-and-forget syncs
+//
+// The original code dropped errors silently. We now retry up to 3 times
+// with exponential backoff (1s, 3s, 9s) per key. Keys are stable per
+// (preference, userId) pair, so a newer update for the same key replaces
+// any pending retry — last-write-wins semantics, which is what we want
+// for user-toggled preferences.
+//
+// This is intentionally minimal: no persistence across app restarts, no
+// network-online detection. For a full offline sync system, swap this
+// out for a library like @tanstack/react-query's mutation retry or a
+// dedicated offline queue.
+// ---------------------------------------------------------------------
+
+const MAX_SYNC_RETRIES = 3
+const SYNC_RETRY_DELAYS_MS = [1000, 3000, 9000] as const
+
+interface PendingSync {
+  fn: () => Promise<void>
+  retries: number
+  timer?: ReturnType<typeof setTimeout>
+}
+
+const pendingSyncs = new Map<string, PendingSync>()
+
+function enqueueSync(key: string, fn: () => Promise<void>): void {
+  // Cancel any in-flight retry for this key — newer updates win.
+  const existing = pendingSyncs.get(key)
+  if (existing?.timer) {
+    clearTimeout(existing.timer)
+  }
+  pendingSyncs.set(key, { fn, retries: 0 })
+  void runSync(key)
+}
+
+/**
+ * Cancel all pending preference syncs and clear the retry queue.
+ *
+ * Called on logout so a freshly logged-in user doesn't inherit retry
+ * attempts queued under the previous session's user id.
+ */
+export function clearPendingSyncs(): void {
+  for (const entry of pendingSyncs.values()) {
+    if (entry.timer) {
+      clearTimeout(entry.timer)
+    }
+  }
+  pendingSyncs.clear()
+}
+
+async function runSync(key: string): Promise<void> {
+  const entry = pendingSyncs.get(key)
+  if (!entry) return
+
+  try {
+    await entry.fn()
+    pendingSyncs.delete(key)
+  } catch (err) {
+    if (entry.retries >= MAX_SYNC_RETRIES) {
+      logger.error(`Sync failed after ${MAX_SYNC_RETRIES} retries`, { key }, err as Error)
+      sentry.captureException(err as Error, {
+        tags: { context: "preferences_sync", sync_key: key },
+      })
+      pendingSyncs.delete(key)
+      return
+    }
+    const delay = SYNC_RETRY_DELAYS_MS[entry.retries] ?? 9000
+    entry.retries += 1
+    entry.timer = setTimeout(() => {
+      void runSync(key)
+    }, delay)
+  }
+}
+
 /**
  * Fetch user preferences from the database
  * Returns null if using Convex, mock mode, or if fetch fails
@@ -96,21 +171,16 @@ export function updatePreference(
     updated_at: new Date().toISOString(),
   } as const
 
-  // Fire and forget - don't await
-  Promise.resolve(supabase.from("profiles").upsert(update))
-    .then(({ error }) => {
-      if (error) {
-        logger.debug(`Failed to sync ${preference} preference`, { error: error.message })
-      } else {
-        logger.debug(`Synced ${preference} preference to database`, { value })
-      }
-    })
-    .catch((err: unknown) => {
-      logger.error(`Error syncing ${preference} preference`, {}, err as Error)
-      sentry.captureException(err as Error, {
-        tags: { context: "preferences_sync", preference },
-      })
-    })
+  // Fire and forget with retry queue. Key is per-(preference, user) so a
+  // newer toggle for the same preference cancels any in-flight retry.
+  enqueueSync(`${preference}:${userId}`, async () => {
+    const { error } = await supabase.from("profiles").upsert(update)
+    if (error) {
+      logger.debug(`Failed to sync ${preference} preference`, { error: error.message })
+      throw new Error(error.message)
+    }
+    logger.debug(`Synced ${preference} preference to database`, { value })
+  })
 }
 
 /**
@@ -158,20 +228,14 @@ export function syncAllPreferences(userId: string, preferences: Partial<UserPref
     updated_at: new Date().toISOString(),
   }
 
-  Promise.resolve(supabase.from("profiles").upsert({ ...update, id: userId }))
-    .then(({ error }) => {
-      if (error) {
-        logger.debug("Failed to sync preferences", { error: error.message })
-      } else {
-        logger.debug("Synced all preferences to database")
-      }
-    })
-    .catch((err: unknown) => {
-      logger.error("Error syncing preferences", {}, err as Error)
-      sentry.captureException(err as Error, {
-        tags: { context: "preferences_sync", preference: "all" },
-      })
-    })
+  enqueueSync(`all_preferences:${userId}`, async () => {
+    const { error } = await supabase.from("profiles").upsert({ ...update, id: userId })
+    if (error) {
+      logger.debug("Failed to sync preferences", { error: error.message })
+      throw new Error(error.message)
+    }
+    logger.debug("Synced all preferences to database")
+  })
 }
 
 /**
@@ -289,24 +353,21 @@ export function syncPushToken(userId: string, token: string): void {
     last_used_at: new Date().toISOString(),
   }
 
-  // Fire and forget - use upsert with unique constraint on (user_id, token)
-  Promise.resolve(supabase.from("push_tokens").upsert(tokenData, { onConflict: "user_id,token" }))
-    .then(({ error }) => {
-      if (error) {
-        logger.debug("Failed to sync push token", { error: error.message })
-      } else {
-        logger.debug("Push token synced to database", {
-          platform: tokenData.platform,
-          deviceName: tokenData.device_name,
-        })
-      }
+  // Fire and forget with retry. Key is per-(user, token) so re-syncing the
+  // same token replaces any pending retry instead of stacking duplicates.
+  enqueueSync(`push_token:${userId}:${token}`, async () => {
+    const { error } = await supabase
+      .from("push_tokens")
+      .upsert(tokenData, { onConflict: "user_id,token" })
+    if (error) {
+      logger.debug("Failed to sync push token", { error: error.message })
+      throw new Error(error.message)
+    }
+    logger.debug("Push token synced to database", {
+      platform: tokenData.platform,
+      deviceName: tokenData.device_name,
     })
-    .catch((err: unknown) => {
-      logger.error("Error syncing push token", {}, err as Error)
-      sentry.captureException(err as Error, {
-        tags: { context: "preferences_sync", preference: "push_token" },
-      })
-    })
+  })
 }
 
 /**
@@ -334,26 +395,18 @@ export function deactivatePushToken(userId: string, token: string): void {
     return
   }
 
-  Promise.resolve(
-    supabase
+  enqueueSync(`deactivate_token:${userId}:${token}`, async () => {
+    const { error } = await supabase
       .from("push_tokens")
       .update({ is_active: false, updated_at: new Date().toISOString() })
       .eq("user_id", userId)
-      .eq("token", token),
-  )
-    .then(({ error }) => {
-      if (error) {
-        logger.debug("Failed to deactivate push token", { error: error.message })
-      } else {
-        logger.debug("Push token deactivated")
-      }
-    })
-    .catch((err: unknown) => {
-      logger.error("Error deactivating push token", {}, err as Error)
-      sentry.captureException(err as Error, {
-        tags: { context: "preferences_sync", preference: "deactivate_token" },
-      })
-    })
+      .eq("token", token)
+    if (error) {
+      logger.debug("Failed to deactivate push token", { error: error.message })
+      throw new Error(error.message)
+    }
+    logger.debug("Push token deactivated")
+  })
 }
 
 /**
@@ -375,23 +428,15 @@ export function deactivateAllPushTokens(userId: string): void {
     return
   }
 
-  Promise.resolve(
-    supabase
+  enqueueSync(`deactivate_all_tokens:${userId}`, async () => {
+    const { error } = await supabase
       .from("push_tokens")
       .update({ is_active: false, updated_at: new Date().toISOString() })
-      .eq("user_id", userId),
-  )
-    .then(({ error }) => {
-      if (error) {
-        logger.debug("Failed to deactivate all push tokens", { error: error.message })
-      } else {
-        logger.debug("All push tokens deactivated for user")
-      }
-    })
-    .catch((err: unknown) => {
-      logger.error("Error deactivating all push tokens", {}, err as Error)
-      sentry.captureException(err as Error, {
-        tags: { context: "preferences_sync", preference: "deactivate_all_tokens" },
-      })
-    })
+      .eq("user_id", userId)
+    if (error) {
+      logger.debug("Failed to deactivate all push tokens", { error: error.message })
+      throw new Error(error.message)
+    }
+    logger.debug("All push tokens deactivated for user")
+  })
 }

@@ -175,6 +175,28 @@ RevenueCat has built-in webhook support for all platforms:
 3. RevenueCat will automatically send events
 4. Update user's subscription status in your database
 
+## Trust Boundary
+
+RevenueCat is the source of truth for entitlement. `useSubscriptionStore.isPro`
+(and `customerInfo` / `webSubscriptionInfo`) is a **client-side UX cache** that
+gets persisted to MMKV so gated screens render instantly on cold start.
+
+Anything the user can persist to disk is editable on a jailbroken device. So:
+
+- **Client gates (`if (!isPro) showPaywall()`) are UX, not security.** They
+  decide what to render, not what to grant.
+- **Server gates are security.** Any Convex mutation, Supabase RPC, or Edge
+  Function that unlocks paid functionality (delivers premium content, raises
+  rate limits, returns subscriber-only fields) MUST verify entitlement against
+  RevenueCat directly or against a webhook-synced server table — never against
+  a client-supplied `isPro` argument.
+- **Webhooks close the loop.** Configure RevenueCat webhooks to a Convex
+  HTTP action / Supabase Edge Function that writes entitlement state to a
+  server table you can read from server functions.
+
+If you find yourself reading `isPro` from a client argument inside a server
+function, stop — that's the bug.
+
 ## Best Practices
 
 1. **Always check `isPro` before showing premium features**
@@ -183,6 +205,7 @@ RevenueCat has built-in webhook support for all platforms:
 4. **Test with mock services first** before adding real API keys
 5. **Use webhooks** for production to ensure sync
 6. **Provide "Restore Purchases"** button for mobile users
+7. **Enforce entitlement server-side** for anything that grants real access
 
 ## Next Steps
 

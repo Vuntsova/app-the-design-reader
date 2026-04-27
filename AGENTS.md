@@ -55,7 +55,13 @@ Is it temporary/ephemeral local state?
   → YES → Use MMKV or Zustand (memory)
 ```
 
-**⚠️ NEVER store sensitive data (tokens, passwords, PII) in MMKV. Use Supabase Auth's secure storage.**
+**NEVER store sensitive data (tokens, passwords, PII) in MMKV. Use Supabase Auth's secure storage.**
+
+**MMKV usage in this repo:**
+- `apps/app/app/utils/storage/index.ts` — the singleton `MMKV` instance (and `useMMKVString` hook with a web localStorage fallback). All other code goes through this module.
+- `apps/app/app/stores/auth/authConstants.ts` and `apps/app/app/stores/auth/authStore.ts` — Zustand auth store persisted via the MMKV-backed `createJSONStorage` adapter (sensitive fields are stripped before write).
+- `apps/app/app/stores/subscriptionStore.ts` — same pattern for the RevenueCat subscription cache.
+- `apps/app/app/theme/context.tsx` — `useMMKVString` for the persisted theme scheme.
 
 ### Backend Choice
 The boilerplate supports two backends with native-level integration:
@@ -279,7 +285,7 @@ const users = useQuery(api.users.list)
 const createUser = useMutation(api.users.create)
 ```
 
-> **Note**: The `backend.db.query()` abstraction exists but is NOT recommended for Convex. Use native hooks for the best developer experience.
+> **Note**: `backend.db` is Supabase-only and throws on Convex. On Convex, use `useQuery` from `convex/_generated/api` directly. The mock-mode in-memory CRUD shim still works for local dev with no credentials.
 
 ### DataDemoScreen (Template)
 See `screens/DataDemoScreen.supabase.tsx` or `screens/DataDemoScreen.convex.tsx` for complete working examples of data fetching with your chosen backend.
@@ -307,6 +313,18 @@ All packages include promotional pricing when configured in RevenueCat:
 - `introPriceString` - e.g., "$0.99"
 - `introPricePeriod` - e.g., "1 month"
 
+## Security
+
+- OAuth state has a 10-minute TTL and is read-and-cleared atomically (see `apps/app/app/utils/oauthState.ts`).
+- Use `requireAdmin(ctx)` from `convex/lib/security.ts` for any role-changing or destructive mutation. See `setUserRole` in `convex/users.ts` for the canonical pattern, including the last-admin lockout guard. Sibling helpers: `requireAuth`, `requireOwnership`, `requireRole`.
+- The `profiles` table is world-readable by design (public discovery). For private user data, follow `supabase/migrations/20260428000000_add_private_profiles_example.sql` — a separate `private_profiles` table with `auth.uid() = user_id` policies. Never store email, phone, billing info, or PII on `profiles`.
+- `clearPendingSyncs()` is called from the auth store on logout to cancel any in-flight preference syncs, so MMKV writes from a previous session can't leak into the next user's session.
+- `ErrorBoundary` only catches React render errors — not async, event handler, or pre-mount crashes. Use Sentry for full coverage. See `vibe/ERROR_HANDLING.md`.
+- Push tokens (`convex/pushTokens.ts`): `register` rejects re-binding a token already owned by another user, and `getActiveTokensForUser` is gated behind `requireAdmin`. Treat push tokens as device-scoped credentials.
+- Realtime broadcast (`convex/realtime.ts`): `broadcast` requires authentication. Anonymous publishing is not allowed.
+- Subscription gating: `useSubscriptionStore.isPro` is a UX cache, not security. Persisted MMKV state is editable on jailbroken devices. Server functions that unlock paid functionality must verify entitlement against RevenueCat or a webhook-synced server table — never against a client-supplied flag. See `vibe/MONETIZATION.md` → "Trust Boundary".
+- Server-side error logs in `convex/http.ts` redact to `errorName` + `errorCode` to avoid leaking upstream customer IDs / query details into logs.
+
 ## Detailed Docs (in `vibe/`)
 
 | Topic | File |
@@ -316,6 +334,7 @@ All packages include promotional pricing when configured in RevenueCat:
 | Screen templates | `apps/app/vibe/SCREEN_TEMPLATES.md` |
 | Services & mocks | `vibe/SERVICES.md`, `vibe/MOCK_SERVICES.md` |
 | Backend overview | `vibe/BACKEND.md` |
+| Error handling (boundary scope, Sentry) | `vibe/ERROR_HANDLING.md` |
 | Supabase (auth, database) | `vibe/SUPABASE.md` |
 | Convex (auth, database) | `vibe/CONVEX.md` |
 | Realtime (chat, presence) | `vibe/SUPABASE.md` (Realtime Hooks section) |

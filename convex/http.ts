@@ -79,11 +79,18 @@ http.route({
         },
       })
     } catch (error) {
-      console.error("[Widget HTTP] Error fetching widget data:", error)
+      // Log only the error name/code — full error objects can carry user IDs,
+      // upstream API customer IDs, or query details that leak via server logs.
+      const errorName = error instanceof Error ? error.name : "UnknownError"
+      const errorCode = (error as { code?: string })?.code
+      console.error("[Widget HTTP] Error fetching widget data", {
+        errorName,
+        errorCode: errorCode ?? "UNKNOWN",
+      })
       return new Response(
         JSON.stringify({
           data: null,
-          error: error instanceof Error ? error.message : "Unknown error",
+          error: "Failed to fetch widget data",
         }),
         {
           status: 500,
@@ -125,10 +132,16 @@ http.route({
         },
       })
     } catch (error) {
+      const errorName = error instanceof Error ? error.name : "UnknownError"
+      const errorCode = (error as { code?: string })?.code
+      console.error("[Widget HTTP] Error fetching widget profile", {
+        errorName,
+        errorCode: errorCode ?? "UNKNOWN",
+      })
       return new Response(
         JSON.stringify({
           data: null,
-          error: error instanceof Error ? error.message : "Unknown error",
+          error: "Failed to fetch widget profile",
         }),
         {
           status: 500,

@@ -1,45 +1,21 @@
 /**
  * Convex Database Service
  *
- * ⚠️  IMPORTANT: This abstraction layer is NOT the recommended way to use Convex.
+ * `backend.db` is Supabase-only. On Convex, every method on this service
+ * throws at runtime (except in mock mode, which is preserved for local
+ * development). For Convex queries and mutations, import the generated
+ * client from `convex/_generated/api` and call `useQuery` / `useMutation`
+ * from `convex/react` directly. See `vibe/BACKEND.md` for the pattern.
  *
- * Convex is fundamentally different from SQL databases:
- * - Data is accessed via reactive queries and mutations (TypeScript functions)
- * - Queries auto-update when underlying data changes (no manual refetching!)
- * - There's no direct table access from the client
- *
- * ## RECOMMENDED: Use Convex Native Hooks
- *
- * ```tsx
- * import { useQuery, useMutation } from "@/hooks/convex"
- * import { api } from "@convex/_generated/api"
- *
- * function MyComponent() {
- *   // Reactive query - auto-updates when data changes!
- *   const users = useQuery(api.users.list)
- *
- *   // Mutation - type-safe, auto-invalidates queries
- *   const createUser = useMutation(api.users.create)
- *
- *   const handleCreate = async () => {
- *     await createUser({ name: "John", email: "john@example.com" })
- *     // No need to manually refetch - useQuery auto-updates!
- *   }
- * }
- * ```
- *
- * ## When to use this service
- *
- * Only use this DatabaseService for:
- * - Mock mode during development (works fully)
- * - Legacy code migration (temporary)
- *
- * For production Convex apps, ALWAYS use native hooks.
+ * Mock mode (no Convex credentials configured) still implements the full
+ * in-memory CRUD surface so existing tests and dev flows keep working.
  */
 
-import { logger } from "../../../utils/Logger"
 import type { DatabaseService, DatabaseResult, QueryFilter, QueryOptions } from "../types"
 import { isUsingMockConvex } from "./client"
+
+const SUPABASE_ONLY_MESSAGE =
+  "backend.db is Supabase-only. On Convex, import generated client from 'convex/_generated/api' and use useQuery/useMutation directly. See vibe/BACKEND.md for the pattern."
 
 // ============================================================================
 // Mock Data Store (for development without Convex credentials)
@@ -145,54 +121,41 @@ function matchesAllFilters(record: Record<string, unknown>, filters: QueryFilter
 export function createConvexDatabaseService(): DatabaseService {
   return {
     async query<T = unknown>(table: string, options?: QueryOptions): Promise<DatabaseResult<T[]>> {
+      if (!isUsingMockConvex) {
+        throw new Error(SUPABASE_ONLY_MESSAGE)
+      }
       try {
-        if (isUsingMockConvex) {
-          // Mock implementation
-          const mockTable = getMockTable(table)
-          let results = Array.from(mockTable.values())
+        // Mock implementation
+        const mockTable = getMockTable(table)
+        let results = Array.from(mockTable.values())
 
-          // Apply filters
-          if (options?.filters) {
-            results = results.filter((record) => matchesAllFilters(record, options.filters!))
-          }
-
-          // Apply ordering
-          if (options?.orderBy && options.orderBy.length > 0) {
-            results.sort((a, b) => {
-              for (const order of options.orderBy!) {
-                const aVal = a[order.column] as unknown
-                const bVal = b[order.column] as unknown
-                if ((aVal as number) < (bVal as number)) return order.ascending !== false ? -1 : 1
-                if ((aVal as number) > (bVal as number)) return order.ascending !== false ? 1 : -1
-              }
-              return 0
-            })
-          }
-
-          // Apply pagination
-          const offset = options?.offset ?? 0
-          const limit = options?.limit ?? results.length
-          results = results.slice(offset, offset + limit)
-
-          return {
-            data: results as T[],
-            error: null,
-            count: results.length,
-          }
+        // Apply filters
+        if (options?.filters) {
+          results = results.filter((record) => matchesAllFilters(record, options.filters!))
         }
 
-        // For real Convex, this would need to call a Convex query
-        logger.warn(
-          `[Convex] Direct database queries not supported. ` +
-            `Use useQuery(api.${table}.list) instead.`,
-        )
+        // Apply ordering
+        if (options?.orderBy && options.orderBy.length > 0) {
+          results.sort((a, b) => {
+            for (const order of options.orderBy!) {
+              const aVal = a[order.column] as unknown
+              const bVal = b[order.column] as unknown
+              if ((aVal as number) < (bVal as number)) return order.ascending !== false ? -1 : 1
+              if ((aVal as number) > (bVal as number)) return order.ascending !== false ? 1 : -1
+            }
+            return 0
+          })
+        }
+
+        // Apply pagination
+        const offset = options?.offset ?? 0
+        const limit = options?.limit ?? results.length
+        results = results.slice(offset, offset + limit)
 
         return {
-          data: null,
-          error: {
-            name: "DatabaseError",
-            message: `Direct queries not supported. Define a Convex query for "${table}" and use useQuery().`,
-          },
+          data: results as T[],
+          error: null,
+          count: results.length,
         }
       } catch (error) {
         return {
@@ -207,27 +170,15 @@ export function createConvexDatabaseService(): DatabaseService {
       id: string,
       _options?: { select?: string },
     ): Promise<DatabaseResult<T>> {
+      if (!isUsingMockConvex) {
+        throw new Error(SUPABASE_ONLY_MESSAGE)
+      }
       try {
-        if (isUsingMockConvex) {
-          const mockTable = getMockTable(table)
-          const record = mockTable.get(id)
-          return {
-            data: (record as T) ?? null,
-            error: record ? null : { name: "DatabaseError", message: "Record not found" },
-          }
-        }
-
-        logger.warn(
-          `[Convex] Direct database get not supported. ` +
-            `Use useQuery(api.${table}.get, { id }) instead.`,
-        )
-
+        const mockTable = getMockTable(table)
+        const record = mockTable.get(id)
         return {
-          data: null,
-          error: {
-            name: "DatabaseError",
-            message: `Direct get not supported. Define a Convex query for "${table}" and use useQuery().`,
-          },
+          data: (record as T) ?? null,
+          error: record ? null : { name: "DatabaseError", message: "Record not found" },
         }
       } catch (error) {
         return {
@@ -242,40 +193,28 @@ export function createConvexDatabaseService(): DatabaseService {
       data: Partial<T> | Partial<T>[],
       _options?: { returning?: boolean },
     ): Promise<DatabaseResult<T>> {
+      if (!isUsingMockConvex) {
+        throw new Error(SUPABASE_ONLY_MESSAGE)
+      }
       try {
-        if (isUsingMockConvex) {
-          const mockTable = getMockTable(table)
-          const records = Array.isArray(data) ? data : [data]
-          const inserted: Record<string, unknown>[] = []
+        const mockTable = getMockTable(table)
+        const records = Array.isArray(data) ? data : [data]
+        const inserted: Record<string, unknown>[] = []
 
-          for (const record of records) {
-            const id = generateMockId()
-            const newRecord = {
-              _id: id,
-              _creationTime: Date.now(),
-              ...record,
-            }
-            mockTable.set(id, newRecord)
-            inserted.push(newRecord)
+        for (const record of records) {
+          const id = generateMockId()
+          const newRecord = {
+            _id: id,
+            _creationTime: Date.now(),
+            ...record,
           }
-
-          return {
-            data: (Array.isArray(data) ? inserted : inserted[0]) as T,
-            error: null,
-          }
+          mockTable.set(id, newRecord)
+          inserted.push(newRecord)
         }
 
-        logger.warn(
-          `[Convex] Direct database insert not supported. ` +
-            `Use useMutation(api.${table}.create) instead.`,
-        )
-
         return {
-          data: null,
-          error: {
-            name: "DatabaseError",
-            message: `Direct insert not supported. Define a Convex mutation for "${table}" and use useMutation().`,
-          },
+          data: (Array.isArray(data) ? inserted : inserted[0]) as T,
+          error: null,
         }
       } catch (error) {
         return {
@@ -290,37 +229,25 @@ export function createConvexDatabaseService(): DatabaseService {
       data: Partial<T>,
       filters: QueryFilter[],
     ): Promise<DatabaseResult<T>> {
+      if (!isUsingMockConvex) {
+        throw new Error(SUPABASE_ONLY_MESSAGE)
+      }
       try {
-        if (isUsingMockConvex) {
-          const mockTable = getMockTable(table)
-          let updated: Record<string, unknown> | null = null
+        const mockTable = getMockTable(table)
+        let updated: Record<string, unknown> | null = null
 
-          for (const [id, record] of mockTable) {
-            if (matchesAllFilters(record, filters)) {
-              const updatedRecord = { ...record, ...data }
-              mockTable.set(id, updatedRecord)
-              updated = updatedRecord
-              break // Update first matching record
-            }
-          }
-
-          return {
-            data: updated as T,
-            error: updated ? null : { name: "DatabaseError", message: "No matching record found" },
+        for (const [id, record] of mockTable) {
+          if (matchesAllFilters(record, filters)) {
+            const updatedRecord = { ...record, ...data }
+            mockTable.set(id, updatedRecord)
+            updated = updatedRecord
+            break // Update first matching record
           }
         }
 
-        logger.warn(
-          `[Convex] Direct database update not supported. ` +
-            `Use useMutation(api.${table}.update) instead.`,
-        )
-
         return {
-          data: null,
-          error: {
-            name: "DatabaseError",
-            message: `Direct update not supported. Define a Convex mutation for "${table}" and use useMutation().`,
-          },
+          data: updated as T,
+          error: updated ? null : { name: "DatabaseError", message: "No matching record found" },
         }
       } catch (error) {
         return {
@@ -331,36 +258,24 @@ export function createConvexDatabaseService(): DatabaseService {
     },
 
     async delete<T = unknown>(table: string, filters: QueryFilter[]): Promise<DatabaseResult<T>> {
+      if (!isUsingMockConvex) {
+        throw new Error(SUPABASE_ONLY_MESSAGE)
+      }
       try {
-        if (isUsingMockConvex) {
-          const mockTable = getMockTable(table)
-          let deleted: Record<string, unknown> | null = null
+        const mockTable = getMockTable(table)
+        let deleted: Record<string, unknown> | null = null
 
-          for (const [id, record] of mockTable) {
-            if (matchesAllFilters(record, filters)) {
-              deleted = record
-              mockTable.delete(id)
-              break // Delete first matching record
-            }
-          }
-
-          return {
-            data: deleted as T,
-            error: deleted ? null : { name: "DatabaseError", message: "No matching record found" },
+        for (const [id, record] of mockTable) {
+          if (matchesAllFilters(record, filters)) {
+            deleted = record
+            mockTable.delete(id)
+            break // Delete first matching record
           }
         }
 
-        logger.warn(
-          `[Convex] Direct database delete not supported. ` +
-            `Use useMutation(api.${table}.remove) instead.`,
-        )
-
         return {
-          data: null,
-          error: {
-            name: "DatabaseError",
-            message: `Direct delete not supported. Define a Convex mutation for "${table}" and use useMutation().`,
-          },
+          data: deleted as T,
+          error: deleted ? null : { name: "DatabaseError", message: "No matching record found" },
         }
       } catch (error) {
         return {
@@ -375,63 +290,51 @@ export function createConvexDatabaseService(): DatabaseService {
       data: Partial<T> | Partial<T>[],
       options?: { onConflict?: string; returning?: boolean },
     ): Promise<DatabaseResult<T>> {
+      if (!isUsingMockConvex) {
+        throw new Error(SUPABASE_ONLY_MESSAGE)
+      }
       try {
-        if (isUsingMockConvex) {
-          const mockTable = getMockTable(table)
-          const records = Array.isArray(data) ? data : [data]
-          const upserted: Record<string, unknown>[] = []
-          const conflictKey = options?.onConflict ?? "_id"
+        const mockTable = getMockTable(table)
+        const records = Array.isArray(data) ? data : [data]
+        const upserted: Record<string, unknown>[] = []
+        const conflictKey = options?.onConflict ?? "_id"
 
-          for (const record of records) {
-            const conflictValue = (record as Record<string, unknown>)[conflictKey]
-            let existingId: string | null = null
+        for (const record of records) {
+          const conflictValue = (record as Record<string, unknown>)[conflictKey]
+          let existingId: string | null = null
 
-            // Find existing record by conflict key
-            if (conflictValue) {
-              for (const [id, existing] of mockTable) {
-                if (existing[conflictKey] === conflictValue) {
-                  existingId = id
-                  break
-                }
+          // Find existing record by conflict key
+          if (conflictValue) {
+            for (const [id, existing] of mockTable) {
+              if (existing[conflictKey] === conflictValue) {
+                existingId = id
+                break
               }
-            }
-
-            if (existingId) {
-              // Update existing
-              const existing = mockTable.get(existingId)!
-              const updated = { ...existing, ...record }
-              mockTable.set(existingId, updated)
-              upserted.push(updated)
-            } else {
-              // Insert new
-              const id = generateMockId()
-              const newRecord = {
-                _id: id,
-                _creationTime: Date.now(),
-                ...record,
-              }
-              mockTable.set(id, newRecord)
-              upserted.push(newRecord)
             }
           }
 
-          return {
-            data: (Array.isArray(data) ? upserted : upserted[0]) as T,
-            error: null,
+          if (existingId) {
+            // Update existing
+            const existing = mockTable.get(existingId)!
+            const updated = { ...existing, ...record }
+            mockTable.set(existingId, updated)
+            upserted.push(updated)
+          } else {
+            // Insert new
+            const id = generateMockId()
+            const newRecord = {
+              _id: id,
+              _creationTime: Date.now(),
+              ...record,
+            }
+            mockTable.set(id, newRecord)
+            upserted.push(newRecord)
           }
         }
 
-        logger.warn(
-          `[Convex] Direct database upsert not supported. ` +
-            `Use useMutation(api.${table}.upsert) instead.`,
-        )
-
         return {
-          data: null,
-          error: {
-            name: "DatabaseError",
-            message: `Direct upsert not supported. Define a Convex mutation for "${table}" and use useMutation().`,
-          },
+          data: (Array.isArray(data) ? upserted : upserted[0]) as T,
+          error: null,
         }
       } catch (error) {
         return {
@@ -445,24 +348,14 @@ export function createConvexDatabaseService(): DatabaseService {
       functionName: string,
       params?: Record<string, unknown>,
     ): Promise<DatabaseResult<T>> {
+      if (!isUsingMockConvex) {
+        throw new Error(SUPABASE_ONLY_MESSAGE)
+      }
       try {
-        if (isUsingMockConvex) {
-          logger.info(`[Convex Mock] RPC called: ${functionName}`, params)
-          return { data: null, error: null }
-        }
-
-        logger.warn(
-          `[Convex] Direct RPC calls not supported from this service. ` +
-            `Use useAction(api.${functionName}) or useMutation(api.${functionName}) instead.`,
-        )
-
-        return {
-          data: null,
-          error: {
-            name: "DatabaseError",
-            message: `Direct RPC not supported. Use useAction() or useMutation() for "${functionName}".`,
-          },
-        }
+        // Mock RPC: log and return null
+        void functionName
+        void params
+        return { data: null, error: null }
       } catch (error) {
         return {
           data: null,

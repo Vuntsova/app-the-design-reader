@@ -166,7 +166,9 @@ class SentryService implements ErrorTrackingService {
       this.Sentry.setUser(user)
 
       if (__DEV__ && user) {
-        logger.debug("🐛 [Sentry] Set user", { userId: user.id || user.email })
+        // Only log the opaque user id — never fall back to email, which is PII
+        // and can ship to remote sinks even from non-prod environments.
+        logger.debug("🐛 [Sentry] Set user", { userId: user.id ?? "<no-id>" })
       }
     } catch (error) {
       logger.error("Sentry setUser error", {}, error as Error)

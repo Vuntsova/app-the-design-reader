@@ -69,9 +69,15 @@ export const webSecureStorage = {
 
     if (!session && local && !hasWarnedSessionStorage) {
       hasWarnedSessionStorage = true
-      console.warn(
+      // Security tradeoff: sessionStorage was unavailable (e.g. private browsing
+      // restrictions, sandboxed iframe), so we fall back to localStorage to keep
+      // auth functional. This means tokens persist across browser restarts on
+      // this device until explicit sign-out. Surfaced via console.error and a
+      // global flag so auth code can detect the degraded mode and warn users.
+      ;(globalThis as { __shipnativeStorageFallback?: boolean }).__shipnativeStorageFallback = true
+      console.error(
         "[webSecureStorage] sessionStorage unavailable, falling back to localStorage. " +
-          "Auth tokens will persist across browser restarts.",
+          "Auth tokens will persist across browser restarts on this device.",
       )
     }
 
@@ -97,7 +103,12 @@ export const webSecureStorage = {
 
       if (!session && local && !hasWarnedSessionStorage) {
         hasWarnedSessionStorage = true
-        console.warn(
+        // Security tradeoff: see setItem for full context. We keep the fallback
+        // path readable so existing sessions don't get logged out, but flag
+        // loudly so callers can notice the degraded storage mode.
+        ;(globalThis as { __shipnativeStorageFallback?: boolean }).__shipnativeStorageFallback =
+          true
+        console.error(
           "[webSecureStorage] sessionStorage unavailable, reading from localStorage fallback.",
         )
       }
@@ -132,4 +143,14 @@ export const webSecureStorage = {
       // Ignore remove failures and keep app functional.
     }
   },
+}
+
+/**
+ * Returns true when secure storage is running in degraded mode (localStorage
+ * fallback because sessionStorage was unavailable). Auth code can read this
+ * to surface a breadcrumb or warn the user that tokens persist across
+ * browser restarts on this device.
+ */
+export function isStorageDegraded(): boolean {
+  return !!(globalThis as { __shipnativeStorageFallback?: boolean }).__shipnativeStorageFallback
 }

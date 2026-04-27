@@ -1,3 +1,21 @@
+/**
+ * Subscription trust boundary
+ * ---------------------------
+ * RevenueCat is the source of truth for entitlement. The persisted `isPro`
+ * flag (and full `customerInfo` / `webSubscriptionInfo`) is a UX cache only —
+ * it lets gated screens render instantly on cold start without waiting for
+ * RevenueCat to round-trip.
+ *
+ * Anything that actually unlocks paid functionality on the SERVER (Convex
+ * mutations, Supabase RPCs, Edge Functions) MUST verify entitlement against
+ * RevenueCat (or a webhook-synced server table), not against this store.
+ * Treat any client-supplied `isPro=true` as untrusted: an attacker can edit
+ * MMKV on a jailbroken device and flip it.
+ *
+ * If you add subscriber-only fields to a query/mutation, gate them server-side.
+ * See vibe/MONETIZATION.md → "Trust Boundary" for the canonical reference.
+ */
+
 import { Platform } from "react-native"
 import { create } from "zustand"
 import { persist, createJSONStorage } from "zustand/middleware"
