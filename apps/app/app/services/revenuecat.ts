@@ -865,7 +865,7 @@ export function getRevenueCatService(): SubscriptionService {
 /**
  * Export the appropriate service based on platform
  */
-export const revenueCat = getRevenueCatService()
+export const revenueCat: SubscriptionService = getRevenueCatService()
 
 /**
  * Initialize RevenueCat (call on app startup)

@@ -9,6 +9,7 @@ import Animated, {
   withSpring,
   withTiming,
   withRepeat,
+  cancelAnimation,
   interpolate,
   Easing,
 } from "react-native-reanimated"
@@ -183,16 +184,17 @@ export function Progress(props: ProgressProps) {
   // Indeterminate animation
   useEffect(() => {
     if (indeterminate) {
-      const animate = () => {
-        indeterminatePosition.value = 0
-        indeterminatePosition.value = withTiming(1, {
+      indeterminatePosition.value = withRepeat(
+        withTiming(1, {
           duration: 1500,
           easing: Easing.inOut(Easing.ease),
-        })
+        }),
+        -1,
+        false,
+      )
+      return () => {
+        cancelAnimation(indeterminatePosition)
       }
-      animate()
-      const interval = setInterval(animate, 1500)
-      return () => clearInterval(interval)
     }
     return undefined
   }, [indeterminate, indeterminatePosition])

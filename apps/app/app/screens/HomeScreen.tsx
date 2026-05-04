@@ -10,7 +10,7 @@ import { Text, Avatar, Badge, PressableCard } from "@/components"
 import { ANIMATION } from "@/config/constants"
 import { useAuth } from "@/hooks"
 import type { MainTabScreenProps } from "@/navigators/navigationTypes"
-import { useNotificationStore } from "@/stores"
+import { useNotificationStore, useSubscriptionStore } from "@/stores"
 import { webDimension } from "@/types/webStyles"
 import { haptics } from "@/utils/haptics"
 
@@ -38,6 +38,9 @@ export const HomeScreen: FC<HomeScreenProps> = function HomeScreen(_props) {
   const { user } = useAuth()
   const isPushEnabled = useNotificationStore((state) => state.isPushEnabled)
   const togglePush = useNotificationStore((state) => state.togglePush)
+  const unreadCount = useNotificationStore((state) => state.unreadCount)
+  const totalNotifications = useNotificationStore((state) => state.notifications.length)
+  const isPro = useSubscriptionStore((state) => state.isPro)
   const insets = useSafeAreaInsets()
   const { width: windowWidth } = useWindowDimensions()
 
@@ -137,7 +140,7 @@ export const HomeScreen: FC<HomeScreenProps> = function HomeScreen(_props) {
             </View>
           </PressableCard>
 
-          {/* Stats Row */}
+          {/* Stats Row — backed by real store values */}
           <View style={styles.statsRow}>
             <PressableCard
               style={styles.statCard}
@@ -145,12 +148,16 @@ export const HomeScreen: FC<HomeScreenProps> = function HomeScreen(_props) {
               delay={ANIMATION.STAGGER_DELAY * 2}
             >
               <View style={styles.statIconBox}>
-                <Ionicons name="flame-outline" size={18} color={theme.colors.palette.accent500} />
+                <Ionicons
+                  name="notifications-outline"
+                  size={18}
+                  color={theme.colors.palette.accent500}
+                />
               </View>
               <Text size="2xl" weight="bold">
-                12
+                {unreadCount}
               </Text>
-              <Text size="xs" color="secondary" tx="homeScreen:statStreak" />
+              <Text size="xs" color="secondary" tx="homeScreen:statUnread" />
             </PressableCard>
             <PressableCard
               style={styles.statCard}
@@ -158,12 +165,18 @@ export const HomeScreen: FC<HomeScreenProps> = function HomeScreen(_props) {
               delay={ANIMATION.STAGGER_DELAY * 2.5}
             >
               <View style={styles.statIconBox}>
-                <Ionicons name="checkmark-circle-outline" size={18} color={theme.colors.success} />
+                <Ionicons
+                  name={isPro ? "checkmark-circle" : "checkmark-circle-outline"}
+                  size={18}
+                  color={isPro ? theme.colors.success : theme.colors.foregroundTertiary}
+                />
               </View>
-              <Text size="2xl" weight="bold">
-                85%
-              </Text>
-              <Text size="xs" color="secondary" tx="homeScreen:statCompleted" />
+              <Text
+                size="2xl"
+                weight="bold"
+                tx={isPro ? "homeScreen:planPro" : "homeScreen:planFree"}
+              />
+              <Text size="xs" color="secondary" tx="homeScreen:statPlan" />
             </PressableCard>
             <PressableCard
               style={styles.statCard}
@@ -171,12 +184,12 @@ export const HomeScreen: FC<HomeScreenProps> = function HomeScreen(_props) {
               delay={ANIMATION.STAGGER_DELAY * 3}
             >
               <View style={styles.statIconBox}>
-                <Ionicons name="star-outline" size={18} color={theme.colors.warning} />
+                <Ionicons name="mail-outline" size={18} color={theme.colors.warning} />
               </View>
               <Text size="2xl" weight="bold">
-                4.8
+                {totalNotifications}
               </Text>
-              <Text size="xs" color="secondary" tx="homeScreen:statRating" />
+              <Text size="xs" color="secondary" tx="homeScreen:statInbox" />
             </PressableCard>
           </View>
 
@@ -296,7 +309,8 @@ const styles = StyleSheet.create((theme) => ({
   },
   scrollContent: {
     paddingHorizontal: theme.spacing.lg,
-    paddingBottom: 120,
+    // Leaves room for the floating tab bar (5xl + 2xl ≈ 120)
+    paddingBottom: theme.spacing["5xl"] + theme.spacing["2xl"],
   },
   header: {
     flexDirection: "row",
@@ -313,8 +327,8 @@ const styles = StyleSheet.create((theme) => ({
     gap: 2,
   },
   notificationButton: {
-    width: 44,
-    height: 44,
+    width: theme.sizes.button.md,
+    height: theme.sizes.button.md,
     borderRadius: theme.radius.full,
     backgroundColor: theme.colors.card,
     alignItems: "center",
@@ -340,8 +354,8 @@ const styles = StyleSheet.create((theme) => ({
     marginTop: theme.spacing.xs,
   },
   featuredIconBox: {
-    width: 44,
-    height: 44,
+    width: theme.sizes.button.md,
+    height: theme.sizes.button.md,
     borderRadius: theme.radius.lg,
     backgroundColor: theme.colors.palette.primary100,
     alignItems: "center",
@@ -392,8 +406,8 @@ const styles = StyleSheet.create((theme) => ({
     ...theme.shadows.sm,
   },
   statIconBox: {
-    width: 36,
-    height: 36,
+    width: theme.sizes.button.sm,
+    height: theme.sizes.button.sm,
     borderRadius: theme.radius.full,
     backgroundColor: theme.colors.backgroundSecondary,
     alignItems: "center",

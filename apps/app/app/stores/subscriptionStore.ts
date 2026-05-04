@@ -31,13 +31,11 @@ import type {
 import { logger } from "../utils/Logger"
 import * as storage from "../utils/storage"
 import { detectLifecycleEvent, getLifecycleEventDescription } from "../utils/subscriptionHelpers"
+// NOTE: This is a circular import — auth/* imports useSubscriptionStore from
+// here. It works because we only ever read useAuthStore inside function bodies
+// (initialize, subscribeToAuthChanges), never at module-evaluation time.
+import { useAuthStore } from "./auth"
 import type { AuthState } from "./auth/authTypes"
-
-const getAuthStore = () => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { useAuthStore } = require("./auth") as typeof import("./auth")
-  return useAuthStore
-}
 
 interface SubscriptionState {
   isPro: boolean
@@ -107,7 +105,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
 
       getActiveService: (): SubscriptionService => {
         // RevenueCat handles both mobile and web now
-        return revenueCat as unknown as SubscriptionService
+        return revenueCat
       },
 
       setCustomerInfo: (info) => {
@@ -282,7 +280,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
 
         initializeInFlight = (async () => {
           try {
-            const user = getAuthStore().getState().user
+            const user = useAuthStore.getState().user
             const service = get().getActiveService()
             const { platform } = get()
 
@@ -394,8 +392,6 @@ export const useSubscriptionStore = create<SubscriptionState>()(
 
 // Listen for auth changes to re-initialize subscription status
 const subscribeToAuthChanges = () => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const useAuthStore = getAuthStore()
   useAuthStore.subscribe((state: AuthState, prevState: AuthState) => {
     if (state.user?.id !== prevState.user?.id) {
       useSubscriptionStore

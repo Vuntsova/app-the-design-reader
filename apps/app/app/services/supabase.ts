@@ -156,13 +156,39 @@ if (useMock && __DEV__) {
 }
 
 // Only set up auto-refresh for real Supabase client
-if (!useMock) {
+// Track the subscription so we can clean it up on re-init (e.g. hot reload,
+// or a future "switch env" flow). Mirrors the pattern used in
+// services/backend/supabase/client.ts.
+let appStateSubscription: ReturnType<typeof AppState.addEventListener> | null = null
+
+function setupAuthAutoRefresh() {
+  if (useMock) return
   const realSupabase = supabase as ReturnType<typeof createClient>
-  AppState.addEventListener("change", (state) => {
+
+  // Remove any previous subscription before adding a new one
+  if (appStateSubscription) {
+    appStateSubscription.remove()
+    appStateSubscription = null
+  }
+
+  appStateSubscription = AppState.addEventListener("change", (state) => {
     if (state === "active") {
       realSupabase.auth.startAutoRefresh?.()
     } else {
       realSupabase.auth.stopAutoRefresh?.()
     }
   })
+}
+
+setupAuthAutoRefresh()
+
+/**
+ * Tear down the AppState listener that drives Supabase auth auto-refresh.
+ * Useful for tests, hot reload boundaries, or a future "switch env" flow.
+ */
+export function destroySupabaseAuthAutoRefresh(): void {
+  if (appStateSubscription) {
+    appStateSubscription.remove()
+    appStateSubscription = null
+  }
 }

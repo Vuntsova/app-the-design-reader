@@ -104,6 +104,18 @@ export const AuthCallbackScreen = () => {
         }
 
         // ================================================================
+        // CSRF state validation (shared prologue for both providers)
+        //
+        // consumeOAuthState atomically reads and clears the stored state.
+        // It returns false if the received state is missing, doesn't match,
+        // or is older than the TTL — which protects both Convex and Supabase
+        // OAuth callbacks from CSRF / replay attacks.
+        // ================================================================
+        if (!oauthState || !consumeOAuthState(oauthState)) {
+          throw new Error("Invalid OAuth callback state. Please try signing in again.")
+        }
+
+        // ================================================================
         // Convex OAuth Callback Handling
         // ================================================================
         if (isConvex) {
@@ -167,12 +179,7 @@ export const AuthCallbackScreen = () => {
         // Supabase OAuth Callback Handling
         // ================================================================
         if (isSupabase) {
-          // consumeOAuthState atomically reads and clears the stored state.
-          // If no state was pending, it returns false only when receivedState is also absent.
-          if (!oauthState || !consumeOAuthState(oauthState)) {
-            throw new Error("Invalid OAuth callback state. Please try signing in again.")
-          }
-
+          // CSRF state already validated in the shared prologue above.
           // Dynamic import to avoid loading Supabase in Convex builds
           const { supabase } = await import("@/services/supabase")
 

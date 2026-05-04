@@ -124,9 +124,9 @@ export const EmailVerificationScreen = () => {
     navigation.navigate("Register" as never)
   }
 
-  const handleBackToLogin = () => {
+  const handleBackToLogin = async () => {
     // Sign out and go to login
-    useAuthStore.getState().signOut()
+    await useAuthStore.getState().signOut()
     navigation.navigate("Login" as never)
   }
 
@@ -275,7 +275,7 @@ const styles = StyleSheet.create((theme) => ({
   iconCircle: {
     width: 120,
     height: 120,
-    borderRadius: 60,
+    borderRadius: theme.radius.full,
     alignItems: "center",
     justifyContent: "center",
   },

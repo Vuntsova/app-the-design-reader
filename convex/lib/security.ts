@@ -166,20 +166,26 @@ export async function requireAdmin(ctx: AuthContext): Promise<Id<"users">> {
 }
 
 /**
- * Filter query results to only include user's own documents
+ * Filter query results to only include the user's own documents.
+ *
+ * Uses the provided index (e.g. `"by_userId"` or `"by_authorId"`) so the
+ * query is bounded by an index range instead of scanning the whole table.
+ * The index's first field must be the owner field.
  *
  * @example
- * const myPosts = await filterByOwner(ctx, "posts", userId)
+ * const myPosts = await filterByOwner(ctx, "posts", "by_authorId", userId, "authorId")
+ * const myNotifs = await filterByOwner(ctx, "notifications", "by_userId", userId)
  */
 export async function filterByOwner<T extends TableNames>(
   ctx: AuthContext,
   table: T,
+  indexName: string,
   userId: Id<"users">,
   ownerField: string = "userId"
 ): Promise<any[]> {
   const results = await (ctx as GenericQueryCtx<any>).db
     .query(table)
-    .filter((q: any) => q.eq(q.field(ownerField), userId))
+    .withIndex(indexName as any, (q: any) => q.eq(ownerField, userId))
     .collect()
 
   return results

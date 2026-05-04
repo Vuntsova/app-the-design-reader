@@ -25,10 +25,13 @@ export async function syncOnboardingToDatabase(userId: string, completed: boolea
   }
 
   try {
-    const { error } = await supabase.from("profiles").upsert({
+    // `has_completed_onboarding` lives on `user_preferences` (RLS-locked
+    // per user). It used to live on `profiles`, but that table is
+    // world-readable for public discovery — onboarding state is private.
+    const { error } = await supabase.from("user_preferences").upsert({
       id: userId,
       has_completed_onboarding: completed,
-    } as SupabaseDatabase["public"]["Tables"]["profiles"]["Insert"])
+    } as SupabaseDatabase["public"]["Tables"]["user_preferences"]["Insert"])
 
     if (error) {
       const supabaseErr = extractSupabaseError(error)
@@ -56,7 +59,7 @@ export async function syncOnboardingToDatabase(userId: string, completed: boolea
           logger.info(
             "\n🗄️  [Supabase] Database Setup Required\n" +
               "─────────────────────────────────────────────\n" +
-              "The app can't find the required table `public.profiles`.\n" +
+              "The app can't find the required table `public.user_preferences`.\n" +
               "To enable database features, create the required tables in your Supabase project:\n" +
               "1. Go to your Supabase project dashboard\n" +
               "2. Navigate to SQL Editor\n" +
@@ -109,7 +112,7 @@ export async function fetchOnboardingFromDatabase(userId: string): Promise<boole
 
   try {
     const { data: profile, error: profileError } = await supabase
-      .from("profiles")
+      .from("user_preferences")
       .select("has_completed_onboarding")
       .eq("id", userId)
       .single()
@@ -129,7 +132,7 @@ export async function fetchOnboardingFromDatabase(userId: string): Promise<boole
           logger.info(
             "\n🗄️  [Supabase] Database Setup Required\n" +
               "─────────────────────────────────────────────\n" +
-              "The app can't find the required table `public.profiles`.\n" +
+              "The app can't find the required table `public.user_preferences`.\n" +
               "To enable database features, create the required tables in your Supabase project:\n" +
               "1. Go to your Supabase project dashboard\n" +
               "2. Navigate to SQL Editor\n" +

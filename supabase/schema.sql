@@ -32,22 +32,13 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     -- Primary key (matches auth.users.id)
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
 
-    -- Profile information
+    -- Public discovery fields only — anything sensitive belongs on
+    -- `user_preferences` or `private_profiles` (see warning below).
     first_name TEXT,
     last_name TEXT,
     full_name TEXT,
     avatar_url TEXT,
     bio TEXT,
-
-    -- User preferences
-    dark_mode_enabled BOOLEAN DEFAULT false,
-    notifications_enabled BOOLEAN DEFAULT true,
-    push_notifications_enabled BOOLEAN DEFAULT true,
-    email_notifications_enabled BOOLEAN DEFAULT true,
-
-    -- Onboarding
-    has_completed_onboarding BOOLEAN DEFAULT false,
-    onboarding_completed_at TIMESTAMPTZ,
 
     -- Timestamps
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -198,6 +189,17 @@ CREATE TABLE IF NOT EXISTS public.user_preferences (
     -- Communication preferences
     marketing_emails BOOLEAN DEFAULT true,
     product_updates BOOLEAN DEFAULT true,
+
+    -- UI / notification preferences (private — never put these on `profiles`,
+    -- which is world-readable for public discovery)
+    dark_mode_enabled BOOLEAN DEFAULT false,
+    notifications_enabled BOOLEAN DEFAULT true,
+    push_notifications_enabled BOOLEAN DEFAULT true,
+    email_notifications_enabled BOOLEAN DEFAULT true,
+
+    -- Onboarding
+    has_completed_onboarding BOOLEAN DEFAULT false,
+    onboarding_completed_at TIMESTAMPTZ,
 
     -- Timestamps
     created_at TIMESTAMPTZ DEFAULT NOW(),

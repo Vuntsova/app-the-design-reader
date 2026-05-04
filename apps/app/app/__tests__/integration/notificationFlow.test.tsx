@@ -159,14 +159,17 @@ describe("Notification Flow Integration", () => {
       )
 
       await act(async () => {
-        await result.current.togglePush("user-123")
+        await result.current.togglePush()
       })
 
       await waitFor(() => {
         expect(result.current.isPushEnabled).toBe(true)
       })
 
-      expect(preferencesSync.syncPushNotificationsPreference).toHaveBeenCalledWith("user-123", true)
+      expect(preferencesSync.syncPushNotificationsPreference).toHaveBeenCalledWith(
+        "test-user-123",
+        true,
+      )
     })
 
     it("should disable push notifications and sync preference", async () => {
@@ -175,7 +178,7 @@ describe("Notification Flow Integration", () => {
       const { result } = renderHook(() => useNotificationStore())
 
       await act(async () => {
-        await result.current.togglePush("user-123")
+        await result.current.togglePush()
       })
 
       await waitFor(() => {
@@ -183,7 +186,7 @@ describe("Notification Flow Integration", () => {
       })
 
       expect(preferencesSync.syncPushNotificationsPreference).toHaveBeenCalledWith(
-        "user-123",
+        "test-user-123",
         false,
       )
     })

@@ -5,6 +5,43 @@ All notable changes to Shipnative will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0-rc13] - 2026-05-05
+
+A broad code-quality pass across the boilerplate. Backend security tightened, demo screens polished, a handful of subtle effects and animations rewritten to the idiomatic patterns. No breaking changes for consumers — public store/hook signatures stay the same.
+
+### Security
+
+- **OAuth redirect allow-list**: `convex/auth.ts` `redirect` callback now falls back to the `shipnative://` default for any URL outside the dev-scheme allow-list AND the `SITE_URL` env var. Removes the "return `redirectTo` as-is" branch that the placeholder comment hinted at.
+- **OAuth CSRF state validation unified**: `screens/AuthCallbackScreen.tsx` runs a shared `consumeOAuthState` prologue before either provider branch. The Convex social-auth hook (`hooks/convex/useConvexSocialAuth.ts`) now calls `createOAuthState()` before redirecting and `clearOAuthState()` on cancel/catch — same behavior the Supabase path already had.
+- **Private user prefs off the world-readable `profiles` table**: New migration `20260505000000_move_private_prefs_off_profiles.sql` moves `dark_mode_enabled`, `notifications_enabled`, `push_notifications_enabled`, `email_notifications_enabled`, `has_completed_onboarding`, and `onboarding_completed_at` onto the RLS-locked `user_preferences` table, with backfill and column drops. `profiles` keeps `display_name`, `bio`, and `avatar_url` for public discovery. Application code (`services/preferencesSync.ts`, both `auth/authHelpers.ts` variants) now reads/writes through `user_preferences`.
+- **Convex `widgets.getData` argument tightening**: Switched the `table` argument from `v.string()` to `v.union(v.literal(...))`, dropped the unused `filters: v.any()`, added an exhaustive `never`-checked default. Every case still scopes by userId.
+- **`deleteAccount` cascade**: `convex/users.ts` now deletes related rows in `profiles`, `posts`, `comments`, `notifications`, `files`, `presence`, and `pushTokens` (each via `withIndex`, in parallel) before removing the user document. Closes the GDPR-relevant orphan-data gap.
+- **OAuth callback log redaction**: `convex/auth.ts` informational `console.log` calls (URL, code, state) are now gated on `NODE_ENV === "development"`. The root `/` debug route in `convex/http.ts` is dev-only too.
+- **Rate limiter device-scoped key**: `utils/rateLimiter.ts` keys signin attempts on `installId:email` instead of just `email`, so a sweep across emails on one device can't lock out the rightful owner of any of them. Install ID is read from `expo-application` with an MMKV-cached fallback.
+
+### Backend
+
+- **`filterByOwner` uses indexes**: `convex/lib/security.ts` helper now takes an `indexName` argument and runs `withIndex(indexName, q => q.eq(ownerField, userId))` instead of a full-table `.filter()` scan.
+- **New `convex/posts.ts`**: First-class `list` / `create` / `remove` mutations and queries used by the demo screen, mirroring the security patterns from `convex/users.ts` (`requireAuth`, `withIndex("by_authorId")`, `requireOwnership`).
+
+### Improved
+
+- **`DataDemoScreen` polish**: Both demo screens compile cleanly without `as any` escape hatches and are fully translatable. The Supabase variant types its client via `SupabaseDatabase["public"]["Tables"]["posts"]` (added a `posts` row type to `apps/app/app/types/supabase.ts`). The Convex variant imports `api.posts.list/create/remove` directly. Convex variant also memoizes its row component (`PostListItem` + `useCallback`) to match the Supabase sibling. Every literal string is replaced with `tx`/`headingTx`/`contentTx`/`buttonTx`/`placeholderTx` props pointing at a new `dataDemoScreen` namespace; keys added across all seven locales.
+- **`OnboardingScreen` goal step actually captures input**: The three goal rows now toggle a `selectedGoal` state instead of all firing `handleNext`. A single Continue button — disabled until a goal is picked — persists via the new `syncGoalPreference` helper before advancing. Selected row gets a primary border + check icon, `accessibilityRole="radio"`.
+- **`HomeScreen` notification toggle now persists**: `togglePush()` was called without a `userId` from HomeScreen, so the new preference was never written to the backend (only saved to MMKV). Refactored the store to read `userId` from `useAuthStore.getState()` itself; all callers (`HomeScreen`, both `ProfileScreen` variants) now just call `togglePush()` with no argument.
+- **`HomeScreen` real stat values**: The placeholder `12 Streak`, `85% Completed`, `4.8 Rating` cards now show real signals from existing stores — `unreadCount` and total `notifications.length` from `useNotificationStore`, plus `Pro`/`Free` from `useSubscriptionStore`. New i18n keys: `homeScreen.statUnread`, `statPlan`, `statInbox`, `planPro`, `planFree`.
+- **`Progress` indeterminate animation**: Rewritten to the idiomatic Reanimated pattern — `withRepeat(withTiming(...), -1, false)` instead of a JS `setInterval` re-issuing `withTiming` every cycle. Adds `cancelAnimation` cleanup so the worklet stops on unmount.
+- **`useEmailVerificationPolling` effect deps**: Polling interval no longer tears down and recreates on every successful poll. Effect deps are `[isEmailConfirmed, user?.id]`; `initialize` is captured via a stable ref.
+- **`EmailVerificationScreen` sign-out race**: `handleBackToLogin` now `await`s `signOut()` before navigating, so AppNavigator can't re-route the user back to email-verify mid-flight.
+- **`subscriptionStore` circular-import workaround removed**: Replaced the runtime `require("./auth")` and `as unknown as SubscriptionService` cast with a direct ES import. `revenueCat` is now explicitly typed as `SubscriptionService` at its export site, so type drift surfaces at compile time.
+- **`services/supabase.ts` AppState listener cleanup**: Mirrors the pattern from `services/backend/supabase/client.ts` — listener stored in a module variable and removed before re-registering. New `destroySupabaseAuthAutoRefresh()` export for tests / env-switch flows.
+- **MMKV storage hook split by platform**: `utils/storage/index.native.ts` + `utils/storage/index.web.ts` replace the single conditionally-hooked `index.ts`. No more `eslint-disable react-hooks/rules-of-hooks`. Public surface unchanged; Metro picks the right file by extension.
+- **Theme tokens replace hardcoded numerics** on `HomeScreen` (icon-box sizes, tab-bar padding) and `EmailVerificationScreen` (icon-circle radius).
+
+### Tooling
+
+- **`setup.ts` exits non-zero on prereq failure** in non-interactive mode. CI runs that should hard-fail no longer "succeed" silently.
+
 ## [1.0.0-rc12] - 2026-05-04
 
 ### Fixed

@@ -169,8 +169,12 @@ export const setUserRole = mutation({
 })
 
 /**
- * Delete current user account
- * Note: This soft-deletes. For hard delete, you may need additional cleanup.
+ * Delete the current user's account and cascade-delete every row that
+ * references them. This is GDPR-required cascading deletion: leaving
+ * orphaned rows that still reference the deleted user (posts, comments,
+ * notifications, files, push tokens, presence, profile) would violate the
+ * user's right to erasure. Any new table that stores a userId/authorId
+ * MUST be added to the cascade below.
  */
 export const deleteAccount = mutation({
   args: {},
@@ -180,14 +184,58 @@ export const deleteAccount = mutation({
       throw new Error("Not authenticated")
     }
 
-    // Delete user data
-    await ctx.db.delete(userId)
+    // Collect all owned rows via indexed queries (no full-table scans).
+    const [
+      profiles,
+      posts,
+      comments,
+      notifications,
+      files,
+      presence,
+      pushTokens,
+    ] = await Promise.all([
+      ctx.db
+        .query("profiles")
+        .withIndex("by_userId", (q) => q.eq("userId", userId))
+        .collect(),
+      ctx.db
+        .query("posts")
+        .withIndex("by_authorId", (q) => q.eq("authorId", userId))
+        .collect(),
+      ctx.db
+        .query("comments")
+        .withIndex("by_authorId", (q) => q.eq("authorId", userId))
+        .collect(),
+      ctx.db
+        .query("notifications")
+        .withIndex("by_userId", (q) => q.eq("userId", userId))
+        .collect(),
+      ctx.db
+        .query("files")
+        .withIndex("by_userId", (q) => q.eq("userId", userId))
+        .collect(),
+      ctx.db
+        .query("presence")
+        .withIndex("by_userId", (q) => q.eq("userId", userId))
+        .collect(),
+      ctx.db
+        .query("pushTokens")
+        .withIndex("by_userId", (q) => q.eq("userId", userId))
+        .collect(),
+    ])
 
-    // You may want to also delete related data:
-    // - Posts
-    // - Comments
-    // - Files
-    // - etc.
+    await Promise.all([
+      ...profiles.map((d) => ctx.db.delete(d._id)),
+      ...posts.map((d) => ctx.db.delete(d._id)),
+      ...comments.map((d) => ctx.db.delete(d._id)),
+      ...notifications.map((d) => ctx.db.delete(d._id)),
+      ...files.map((d) => ctx.db.delete(d._id)),
+      ...presence.map((d) => ctx.db.delete(d._id)),
+      ...pushTokens.map((d) => ctx.db.delete(d._id)),
+    ])
+
+    // Finally, delete the user record itself.
+    await ctx.db.delete(userId)
 
     return { success: true }
   },

@@ -10,7 +10,7 @@
  * Uses the backend abstraction layer for provider-agnostic auth functionality.
  */
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import { POLLING } from "../config/constants"
 import { getBackend } from "../services/backend"
@@ -56,10 +56,18 @@ export function useEmailVerificationPolling({
 }: UseEmailVerificationPollingOptions) {
   const [checkingStatus, setCheckingStatus] = useState(false)
 
+  // Capture initialize in a ref so it doesn't retrigger the polling effect.
+  // Zustand actions are stable in practice, but stashing in a ref guarantees it.
+  const initializeRef = useRef(initialize)
+  useEffect(() => {
+    initializeRef.current = initialize
+  }, [initialize])
+
+  // Polling restarts only when the user identity (id) changes.
   useEffect(() => {
     if (isEmailConfirmed) {
       // Email confirmed - reinitialize to update auth state
-      initialize()
+      initializeRef.current()
       return
     }
 
@@ -77,7 +85,8 @@ export function useEmailVerificationPolling({
 
       setCheckingStatus(true)
       try {
-        // Store current user before polling to preserve it on error
+        // Store current user before polling to preserve it on error.
+        // Read from the store at poll time so we always have the freshest user.
         const currentUser = useAuthStore.getState().user
 
         // Refresh user data to get latest email confirmation status
@@ -108,7 +117,7 @@ export function useEmailVerificationPolling({
         // Only call initialize if we still have a user
         const userBeforeInitialize = useAuthStore.getState().user
         if (userBeforeInitialize) {
-          await initialize()
+          await initializeRef.current()
 
           // After initialize, verify user still exists - if not, restore it
           const userAfterInitialize = useAuthStore.getState().user
@@ -124,7 +133,7 @@ export function useEmailVerificationPolling({
         })
         const existingUser = useAuthStore.getState().user
         if (!existingUser && user) {
-          // User was lost - restore it
+          // User was lost - restore it from the snapshot we had when polling started
           useAuthStore.getState().setUser(user)
         }
       } finally {
@@ -133,7 +142,7 @@ export function useEmailVerificationPolling({
     }, POLLING.EMAIL_VERIFICATION_INTERVAL)
 
     return () => clearInterval(interval)
-  }, [isEmailConfirmed, initialize, user?.id, user, resendTimestampRef])
+  }, [isEmailConfirmed, user?.id])
 
   return { checkingStatus }
 }

@@ -2,12 +2,16 @@
 
 ## Common Issues and Solutions
 
-### 404 Errors on Profile Queries After Signup
+### 404 Errors on Preferences Queries After Signup
 
 **Symptom**: After signing up, you see 404 errors in the browser console like:
 ```
-GET https://your-project.supabase.co/rest/v1/profiles?select=dark_mode_enabled,notifications_enabled,push_notifications_enabled,email_notifications_enabled&id=eq.USER_ID 404
+GET https://your-project.supabase.co/rest/v1/user_preferences?select=dark_mode_enabled,notifications_enabled,push_notifications_enabled,email_notifications_enabled&id=eq.USER_ID 404
 ```
+
+(Older versions of the boilerplate stored these columns on `profiles`. They were
+moved to `user_preferences` because `profiles` is world-readable for public
+discovery — see `supabase/migrations/20260505000000_move_private_prefs_off_profiles.sql`.)
 
 **Root Causes**:
 

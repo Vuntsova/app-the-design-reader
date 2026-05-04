@@ -59,7 +59,7 @@ interface ProfileScreenProps extends MainTabScreenProps<"Profile"> {}
 
 export const ProfileScreen: FC<ProfileScreenProps> = ({ navigation }) => {
   const { t } = useTranslation()
-  const { user, signOut, userId } = useAuth()
+  const { user, signOut } = useAuth()
   const isPro = useSubscriptionStore((state) => state.isPro)
   const checkProStatus = useSubscriptionStore((state) => state.checkProStatus)
   const isPushEnabled = useNotificationStore((state) => state.isPushEnabled)
@@ -113,7 +113,7 @@ export const ProfileScreen: FC<ProfileScreenProps> = ({ navigation }) => {
 
   const handleTogglePush = () => {
     haptics.switchChange()
-    togglePush(userId ?? undefined)
+    togglePush()
   }
 
   const handleToggleWidgets = () => {

@@ -4,7 +4,11 @@
  * Handles syncing user preferences (theme, notifications) between
  * local storage and the backend database.
  *
- * - Supabase: Uses profiles table for preferences, push_tokens table for tokens
+ * - Supabase: Uses `user_preferences` table for preferences (RLS-locked
+ *   to the owning user) and `push_tokens` table for tokens. Private
+ *   prefs used to live on `profiles`, but that table is world-readable
+ *   for public discovery, so we moved them off — see migration
+ *   20260505000000_move_private_prefs_off_profiles.sql.
  * - Convex: Preferences use Convex mutations, push tokens use convex/pushTokens.ts
  *
  * Uses fire-and-forget pattern for updates to avoid blocking UI.
@@ -17,7 +21,7 @@ import { UnistylesRuntime } from "react-native-unistyles"
 import { sentry } from "./sentry"
 import { isSupabase, isConvex } from "../config/env"
 import { useNotificationStore } from "../stores/notificationStore"
-import type { SupabaseDatabase, UserPreferences } from "../types/supabase"
+import type { OnboardingGoal, SupabaseDatabase, UserPreferences } from "../types/supabase"
 import { logger } from "../utils/Logger"
 import { storage } from "../utils/storage"
 
@@ -34,7 +38,7 @@ const convexPushTokens = isConvex ? require("./backend/convex/pushTokens") : nul
 // For preferences (theme, notifications settings), skip sync for Convex (use React mutations instead)
 const shouldSkipPreferenceSync = isConvex || isUsingMockSupabase
 
-type _ProfilesUpdate = SupabaseDatabase["public"]["Tables"]["profiles"]["Update"]
+type _UserPreferencesUpdate = SupabaseDatabase["public"]["Tables"]["user_preferences"]["Update"]
 type PushTokenInsert = SupabaseDatabase["public"]["Tables"]["push_tokens"]["Insert"]
 
 // Storage keys (must match the keys used in theme context and notification store)
@@ -129,7 +133,7 @@ export async function fetchUserPreferences(userId: string): Promise<UserPreferen
 
   try {
     const { data, error } = await supabase
-      .from("profiles")
+      .from("user_preferences")
       .select(
         "dark_mode_enabled, notifications_enabled, push_notifications_enabled, email_notifications_enabled",
       )
@@ -137,7 +141,7 @@ export async function fetchUserPreferences(userId: string): Promise<UserPreferen
       .single()
 
     if (error) {
-      // Table might not exist or user has no profile yet - that's okay
+      // Table might not exist or user has no row yet - that's okay
       logger.debug("Failed to fetch user preferences", { error: error.message })
       return null
     }
@@ -174,7 +178,7 @@ export function updatePreference(
   // Fire and forget with retry queue. Key is per-(preference, user) so a
   // newer toggle for the same preference cancels any in-flight retry.
   enqueueSync(`${preference}:${userId}`, async () => {
-    const { error } = await supabase.from("profiles").upsert(update)
+    const { error } = await supabase.from("user_preferences").upsert(update)
     if (error) {
       logger.debug(`Failed to sync ${preference} preference`, { error: error.message })
       throw new Error(error.message)
@@ -212,6 +216,36 @@ export function syncEmailNotificationsPreference(userId: string, enabled: boolea
 }
 
 /**
+ * Update onboarding goal preference (fire-and-forget).
+ *
+ * Goal is a string union, not a boolean, so it bypasses `updatePreference`
+ * (which is typed for booleans only). Storage is the same `user_preferences`
+ * row — another agent owns the schema migration; this just writes to the
+ * in-memory shape the rest of the app reads.
+ */
+export function syncGoalPreference(userId: string, goal: OnboardingGoal): void {
+  if (shouldSkipPreferenceSync) {
+    logger.debug("Skipping goal sync (Convex or mock mode)")
+    return
+  }
+
+  const update = {
+    id: userId,
+    goal,
+    updated_at: new Date().toISOString(),
+  } as const
+
+  enqueueSync(`goal:${userId}`, async () => {
+    const { error } = await supabase.from("user_preferences").upsert(update)
+    if (error) {
+      logger.debug("Failed to sync goal preference", { error: error.message })
+      throw new Error(error.message)
+    }
+    logger.debug("Synced goal preference to database", { goal })
+  })
+}
+
+/**
  * Sync all preferences at once (fire-and-forget)
  *
  * For Convex: Use useMutation(api.users.updatePreferences) instead
@@ -229,7 +263,7 @@ export function syncAllPreferences(userId: string, preferences: Partial<UserPref
   }
 
   enqueueSync(`all_preferences:${userId}`, async () => {
-    const { error } = await supabase.from("profiles").upsert({ ...update, id: userId })
+    const { error } = await supabase.from("user_preferences").upsert({ ...update, id: userId })
     if (error) {
       logger.debug("Failed to sync preferences", { error: error.message })
       throw new Error(error.message)

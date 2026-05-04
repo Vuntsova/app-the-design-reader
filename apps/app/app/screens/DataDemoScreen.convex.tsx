@@ -14,10 +14,10 @@
  * - Data updates in real-time across all clients
  */
 
-import { FC, useState } from "react"
+import { FC, memo, useCallback, useState } from "react"
 import { View, FlatList } from "react-native"
 import { api } from "@convex/_generated/api"
-import type { Id } from "@convex/_generated/dataModel"
+import type { Doc, Id } from "@convex/_generated/dataModel"
 import { Ionicons } from "@expo/vector-icons"
 import { StyleSheet, useUnistyles } from "react-native-unistyles"
 
@@ -29,15 +29,52 @@ import { useQuery, useMutation } from "@/hooks/convex"
 // TYPES
 // =============================================================================
 
-// Convex provides type-safe types from schema
-// Note: This type will be properly inferred once you add a "posts" table to your Convex schema
-type Post = {
-  _id: Id<"posts">
-  _creationTime: number
-  title: string
-  content: string
-  authorId: string
+// Pull the row type from the generated dataModel so the screen breaks at
+// compile time if `posts` ever changes shape in `convex/schema.ts`.
+type Post = Doc<"posts">
+
+interface PostListItemProps {
+  item: Post
+  currentUserId: string | null
+  onDelete: (postId: Id<"posts">) => void
+  deleteColor: string
 }
+
+const PostListItem = memo(function PostListItem({
+  item,
+  currentUserId,
+  onDelete,
+  deleteColor,
+}: PostListItemProps) {
+  return (
+    <Card
+      style={styles.postCard}
+      ContentComponent={
+        <>
+          <View style={styles.postHeader}>
+            <Text preset="subheading" style={styles.postTitle}>
+              {item.title}
+            </Text>
+            {item.authorId === currentUserId && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onPress={() => onDelete(item._id)}
+                LeftAccessory={() => (
+                  <Ionicons name="trash-outline" size={16} color={deleteColor} />
+                )}
+              />
+            )}
+          </View>
+          <Text style={styles.postContent}>{item.content}</Text>
+          <Text preset="caption" style={styles.postDate}>
+            {new Date(item._creationTime).toLocaleDateString()}
+          </Text>
+        </>
+      }
+    />
+  )
+})
 
 // =============================================================================
 // COMPONENT
@@ -57,22 +94,18 @@ export const DataDemoScreen: FC = () => {
   // No manual refetching or invalidation needed.
   // ============================================================
 
-  // Reactive query - auto-updates when posts table changes
-  // Note: You need to define api.posts.list in your Convex functions
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const posts = useQuery((api as any).posts?.list) as Post[] | undefined
+  // Reactive query - auto-updates when posts table changes.
+  // Function refs are typed, so a typo here is a TS error.
+  const posts = useQuery(api.posts.list)
 
   // Mutations - auto-invalidate related queries
-  // Note: You need to define these in your Convex functions
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const createPost = useMutation((api as any).posts?.create)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const deletePost = useMutation((api as any).posts?.remove)
+  const createPost = useMutation(api.posts.create)
+  const deletePost = useMutation(api.posts.remove)
 
   // Loading state: undefined means loading
   const isLoading = posts === undefined
 
-  const handleCreatePost = async () => {
+  const handleCreatePost = useCallback(async () => {
     if (!title.trim() || !content.trim()) return
 
     try {
@@ -81,47 +114,33 @@ export const DataDemoScreen: FC = () => {
       setTitle("")
       setContent("")
     } catch (err) {
-      // Handle error
       console.error("Failed to create post:", err)
     }
-  }
+  }, [content, createPost, title])
 
-  const handleDeletePost = async (postId: Id<"posts">) => {
-    try {
-      await deletePost({ id: postId })
-      // No need to refetch! The useQuery hook auto-updates
-    } catch (err) {
-      console.error("Failed to delete post:", err)
-    }
-  }
-
-  const renderPost = ({ item }: { item: Post }) => (
-    <Card
-      style={styles.postCard}
-      ContentComponent={
-        <>
-          <View style={styles.postHeader}>
-            <Text preset="subheading" style={styles.postTitle}>
-              {item.title}
-            </Text>
-            {item.authorId === userId && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onPress={() => handleDeletePost(item._id)}
-                LeftAccessory={() => (
-                  <Ionicons name="trash-outline" size={16} color={theme.colors.error} />
-                )}
-              />
-            )}
-          </View>
-          <Text style={styles.postContent}>{item.content}</Text>
-          <Text preset="caption" style={styles.postDate}>
-            {new Date(item._creationTime).toLocaleDateString()}
-          </Text>
-        </>
+  const handleDeletePost = useCallback(
+    async (postId: Id<"posts">) => {
+      try {
+        await deletePost({ id: postId })
+      } catch (err) {
+        console.error("Failed to delete post:", err)
       }
-    />
+    },
+    [deletePost],
+  )
+
+  const keyExtractor = useCallback((item: Post) => item._id, [])
+
+  const renderPost = useCallback(
+    ({ item }: { item: Post }) => (
+      <PostListItem
+        item={item}
+        currentUserId={userId ?? null}
+        onDelete={handleDeletePost}
+        deleteColor={theme.colors.error}
+      />
+    ),
+    [handleDeletePost, theme.colors.error, userId],
   )
 
   if (isLoading) {
@@ -129,7 +148,7 @@ export const DataDemoScreen: FC = () => {
       <Screen preset="fixed" safeAreaEdges={["top", "bottom"]}>
         <View style={styles.centered}>
           <Spinner size="lg" />
-          <Text style={styles.loadingText}>Loading posts...</Text>
+          <Text style={styles.loadingText} tx="dataDemoScreen:loadingPosts" />
         </View>
       </Screen>
     )
@@ -140,10 +159,8 @@ export const DataDemoScreen: FC = () => {
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <Text preset="heading">Data Demo (Convex)</Text>
-          <Text preset="caption" style={styles.subtitle}>
-            Reactive queries - auto-updates!
-          </Text>
+          <Text preset="heading" tx="dataDemoScreen:convexTitle" />
+          <Text preset="caption" style={styles.subtitle} tx="dataDemoScreen:convexSubtitle" />
         </View>
 
         {/* Create Post Form */}
@@ -151,17 +168,15 @@ export const DataDemoScreen: FC = () => {
           style={styles.formCard}
           ContentComponent={
             <>
-              <Text preset="subheading" style={styles.formTitle}>
-                Create Post
-              </Text>
+              <Text preset="subheading" style={styles.formTitle} tx="dataDemoScreen:formTitle" />
               <TextField
-                placeholder="Title"
+                placeholderTx="dataDemoScreen:titlePlaceholder"
                 value={title}
                 onChangeText={setTitle}
                 style={styles.input}
               />
               <TextField
-                placeholder="Content"
+                placeholderTx="dataDemoScreen:contentPlaceholder"
                 value={content}
                 onChangeText={setContent}
                 multiline
@@ -169,7 +184,7 @@ export const DataDemoScreen: FC = () => {
                 style={styles.input}
               />
               <Button
-                text="Create Post"
+                tx="dataDemoScreen:createButton"
                 variant="filled"
                 onPress={handleCreatePost}
                 disabled={!title.trim() || !content.trim()}
@@ -181,14 +196,14 @@ export const DataDemoScreen: FC = () => {
         {/* Posts List - No RefreshControl needed! Data is reactive */}
         <FlatList
           data={posts}
-          keyExtractor={(item) => item._id}
+          keyExtractor={keyExtractor}
           renderItem={renderPost}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
             <EmptyState
               icon="components"
-              heading="No posts yet"
-              content="Create your first post above"
+              headingTx="dataDemoScreen:emptyHeading"
+              contentTx="dataDemoScreen:emptyContent"
             />
           }
         />
@@ -199,9 +214,7 @@ export const DataDemoScreen: FC = () => {
           ContentComponent={
             <View style={styles.infoRow}>
               <Ionicons name="flash" size={20} color={theme.colors.primary} />
-              <Text preset="caption" style={styles.infoText}>
-                Open this app in another window - posts sync in real-time!
-              </Text>
+              <Text preset="caption" style={styles.infoText} tx="dataDemoScreen:realtimeInfo" />
             </View>
           }
         />

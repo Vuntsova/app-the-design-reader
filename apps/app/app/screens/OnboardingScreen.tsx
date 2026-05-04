@@ -9,7 +9,9 @@ import { OnboardingScreenLayout } from "@/components/layouts/OnboardingScreenLay
 import { Text } from "@/components/Text"
 import { useAuth } from "@/hooks"
 import type { AppStackScreenProps } from "@/navigators/navigationTypes"
+import { syncGoalPreference } from "@/services/preferencesSync"
 import { useNotificationStore } from "@/stores/notificationStore"
+import type { OnboardingGoal } from "@/types/supabase"
 import { logger } from "@/utils/Logger"
 
 // =============================================================================
@@ -29,17 +31,19 @@ export const OnboardingScreen: FC<OnboardingScreenProps> = function OnboardingSc
   const { t } = useTranslation()
   const { theme } = useUnistyles()
   const navigation = useNavigation<AppStackScreenProps<"Onboarding">["navigation"]>()
-  const { completeOnboarding } = useAuth()
+  const { completeOnboarding, userId } = useAuth()
   const togglePush = useNotificationStore((state) => state.togglePush)
   const [step, setStep] = useState(0)
   const [isRequestingPermission, setIsRequestingPermission] = useState(false)
+  const [selectedGoal, setSelectedGoal] = useState<OnboardingGoal | null>(null)
 
   const goalOptions = useMemo(
-    () => [
-      { key: "goalBuildApp", label: t("onboardingScreen:goalBuildApp") },
-      { key: "goalLearnReactNative", label: t("onboardingScreen:goalLearnReactNative") },
-      { key: "goalJustExploring", label: t("onboardingScreen:goalJustExploring") },
-    ],
+    () =>
+      [
+        { key: "goalBuildApp", label: t("onboardingScreen:goalBuildApp") },
+        { key: "goalLearnReactNative", label: t("onboardingScreen:goalLearnReactNative") },
+        { key: "goalJustExploring", label: t("onboardingScreen:goalJustExploring") },
+      ] as const satisfies ReadonlyArray<{ key: OnboardingGoal; label: string }>,
     [t],
   )
 
@@ -55,6 +59,17 @@ export const OnboardingScreen: FC<OnboardingScreenProps> = function OnboardingSc
       // The Paywall screen will handle navigation to Main
       navigation.replace("Paywall", { fromOnboarding: true })
     }
+  }
+
+  const handleGoalContinue = () => {
+    if (!selectedGoal) return
+    if (userId) {
+      // Fire-and-forget; another agent owns the storage layer.
+      syncGoalPreference(userId, selectedGoal)
+    } else {
+      logger.debug("🎯 [Onboarding] No userId yet, skipping goal sync", { selectedGoal })
+    }
+    handleNext()
   }
 
   const handleEnableNotifications = async () => {
@@ -99,15 +114,45 @@ export const OnboardingScreen: FC<OnboardingScreenProps> = function OnboardingSc
         subtitleTx="onboardingScreen:goalsSubtitle"
       >
         <View style={styles.optionsContainer}>
-          {goalOptions.map((option) => (
-            <TouchableOpacity key={option.key} style={styles.optionButton} onPress={handleNext}>
-              <Text weight="semiBold" style={styles.optionText}>
-                {option.label}
-              </Text>
-              <Ionicons name="chevron-forward" size={20} color={theme.colors.foregroundSecondary} />
-            </TouchableOpacity>
-          ))}
+          {goalOptions.map((option) => {
+            const isSelected = selectedGoal === option.key
+            return (
+              <TouchableOpacity
+                key={option.key}
+                style={[styles.optionButton, isSelected && styles.optionButtonSelected]}
+                onPress={() => setSelectedGoal(option.key)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: isSelected }}
+                activeOpacity={0.8}
+              >
+                <Text weight="semiBold" style={styles.optionText}>
+                  {option.label}
+                </Text>
+                <Ionicons
+                  name={isSelected ? "checkmark-circle" : "ellipse-outline"}
+                  size={22}
+                  color={isSelected ? theme.colors.primary : theme.colors.foregroundSecondary}
+                />
+              </TouchableOpacity>
+            )
+          })}
         </View>
+        <TouchableOpacity
+          style={[
+            styles.primaryButton,
+            styles.goalContinueButton,
+            !selectedGoal && styles.primaryButtonDisabled,
+          ]}
+          onPress={handleGoalContinue}
+          disabled={!selectedGoal}
+          activeOpacity={0.8}
+        >
+          <Text
+            weight="semiBold"
+            style={styles.primaryButtonText}
+            tx="onboardingScreen:goalContinue"
+          />
+        </TouchableOpacity>
       </OnboardingScreenLayout>
     )
   }
@@ -193,14 +238,22 @@ const styles = StyleSheet.create((theme) => ({
     alignItems: "center",
     backgroundColor: theme.colors.card,
     borderRadius: theme.radius.lg,
+    borderWidth: 2,
+    borderColor: "transparent",
     flexDirection: "row",
     justifyContent: "space-between",
     padding: theme.spacing.lg,
     ...theme.shadows.sm,
   },
+  optionButtonSelected: {
+    borderColor: theme.colors.primary,
+  },
   optionText: {
     color: theme.colors.foreground,
     fontSize: theme.typography.sizes.lg,
+  },
+  goalContinueButton: {
+    marginTop: theme.spacing.xl,
   },
   notificationCard: {
     backgroundColor: theme.colors.card,

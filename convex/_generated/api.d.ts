@@ -12,6 +12,7 @@ import type * as auth from "../auth.js";
 import type * as crons from "../crons.js";
 import type * as http from "../http.js";
 import type * as lib_security from "../lib/security.js";
+import type * as posts from "../posts.js";
 import type * as pushTokens from "../pushTokens.js";
 import type * as realtime from "../realtime.js";
 import type * as seed from "../seed.js";
@@ -30,6 +31,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   http: typeof http;
   "lib/security": typeof lib_security;
+  posts: typeof posts;
   pushTokens: typeof pushTokens;
   realtime: typeof realtime;
   seed: typeof seed;

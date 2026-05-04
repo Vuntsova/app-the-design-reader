@@ -148,9 +148,7 @@ const checkPrerequisites = async (skipCheck = false): Promise<boolean> => {
   if (!allPassed) {
     console.log(chalk.red("\n❌ Prerequisites check failed. Please install required tools and try again."))
     console.log(chalk.dim("   Or run with --skip-prereqs to continue anyway.\n"))
-    if (!isNonInteractive) {
-      process.exit(1)
-    }
+    process.exit(1)
   } else {
     console.log("")
   }

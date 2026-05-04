@@ -219,7 +219,7 @@ export const ProfileScreen: FC<ProfileScreenProps> = ({ navigation }) => {
 
   const handleTogglePush = () => {
     haptics.switchChange()
-    togglePush(userId ?? undefined)
+    togglePush()
   }
 
   const handleToggleWidgets = () => {

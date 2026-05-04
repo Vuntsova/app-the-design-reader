@@ -87,9 +87,11 @@ const en = {
     featuredTitle: "Meditate for 10 mins",
     featuredSubtitle: "Clear your mind and start fresh.",
     startNow: "Start Now",
-    statStreak: "Streak",
-    statCompleted: "Completed",
-    statRating: "Rating",
+    statUnread: "Unread",
+    statPlan: "Plan",
+    statInbox: "Inbox",
+    planPro: "Pro",
+    planFree: "Free",
     explore: "Explore",
     uiComponents: "UI Components",
     uiComponentsDescription: "View all pre-built components",
@@ -340,6 +342,7 @@ const en = {
     goalBuildApp: "Build an App",
     goalLearnReactNative: "Learn React Native",
     goalJustExploring: "Just Exploring",
+    goalContinue: "Continue",
     // Step 2: Notifications
     notificationsTitle: "Stay Updated",
     notificationsSubtitle:
@@ -371,6 +374,25 @@ const en = {
     signUp: "Sign Up",
     appleSignInFailed: "Failed to sign in with Apple",
     googleSignInFailed: "Failed to sign in with Google",
+  },
+  dataDemoScreen: {
+    // Supabase variant
+    supabaseTitle: "Data Demo (Supabase)",
+    supabaseSubtitle: "React Query + Supabase SDK",
+    // Convex variant
+    convexTitle: "Data Demo (Convex)",
+    convexSubtitle: "Reactive queries - auto-updates!",
+    realtimeInfo: "Open this app in another window - posts sync in real-time!",
+    // Shared
+    loadingPosts: "Loading posts...",
+    errorHeading: "Failed to load posts",
+    retryButton: "Retry",
+    formTitle: "Create Post",
+    titlePlaceholder: "Title",
+    contentPlaceholder: "Content",
+    createButton: "Create Post",
+    emptyHeading: "No posts yet",
+    emptyContent: "Create your first post above",
   },
   // @demo remove-block-start
   demoNavigator: {

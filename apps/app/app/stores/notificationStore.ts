@@ -56,7 +56,7 @@ export interface NotificationState {
   // Actions
   initialize: () => Promise<void>
   cleanup: () => void
-  togglePush: (userId?: string) => Promise<void>
+  togglePush: () => Promise<void>
   requestPermission: () => Promise<boolean>
   registerForPush: () => Promise<void>
   scheduleNotification: (input: LocalNotificationInput) => Promise<string>
@@ -171,7 +171,7 @@ export const useNotificationStore = create<NotificationState>()(
         }
       },
 
-      togglePush: async (userId?: string) => {
+      togglePush: async () => {
         const { isPushEnabled, requestPermission: reqPerm } = get()
         let newValue: boolean
 
@@ -190,7 +190,9 @@ export const useNotificationStore = create<NotificationState>()(
           }
         }
 
-        // Sync to database (fire-and-forget)
+        // Sync to database (fire-and-forget) — read userId from auth store directly
+        // so callers don't need to thread it through.
+        const userId = useAuthStore.getState().user?.id
         if (userId) {
           syncPushNotificationsPreference(userId, newValue)
         }

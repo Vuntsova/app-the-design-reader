@@ -134,47 +134,60 @@ export const { auth, signIn, signOut, store } = convexAuth({
   callbacks: {
     // Validate redirect URIs for OAuth flows (mobile app deep links + web)
     async redirect({ redirectTo }) {
-      // Log for debugging
-      console.log("[Convex Auth] redirect callback called with:", redirectTo)
+      const isDev = process.env.NODE_ENV === "development"
+      const defaultRedirect = "shipnative://"
+
+      if (isDev) {
+        console.log("[Convex Auth] redirect callback called with:", redirectTo)
+      }
 
       // WORKAROUND: On mobile, the redirectTo cookie may not be preserved
       // through the OAuth flow due to cookie restrictions in in-app browsers.
       // If redirectTo is undefined/empty, default to the app's deep link scheme.
       if (!redirectTo) {
-        // Default to the mobile app's deep link for OAuth callbacks
-        const defaultRedirect = "shipnative://"
-        console.log(
-          "[Convex Auth] No redirectTo (cookie issue), using default:",
-          defaultRedirect,
-        )
+        if (isDev) {
+          console.log(
+            "[Convex Auth] No redirectTo (cookie issue), using default:",
+            defaultRedirect,
+          )
+        }
         return defaultRedirect
       }
 
       // Allow Expo development URLs
       if (redirectTo.startsWith("exp://")) {
-        console.log("[Convex Auth] Allowing Expo URL:", redirectTo)
+        if (isDev) console.log("[Convex Auth] Allowing Expo URL:", redirectTo)
         return redirectTo
       }
       // Allow custom app scheme (shipnative://)
       if (redirectTo.startsWith("shipnative://")) {
-        console.log("[Convex Auth] Allowing shipnative:// URL:", redirectTo)
+        if (isDev) console.log("[Convex Auth] Allowing shipnative:// URL:", redirectTo)
         return redirectTo
       }
       // Allow localhost for web development
       if (redirectTo.startsWith("http://localhost")) {
-        console.log("[Convex Auth] Allowing localhost URL:", redirectTo)
+        if (isDev) console.log("[Convex Auth] Allowing localhost URL:", redirectTo)
         return redirectTo
       }
       // Allow 127.0.0.1 for local development
       if (redirectTo.startsWith("http://127.0.0.1")) {
-        console.log("[Convex Auth] Allowing 127.0.0.1 URL:", redirectTo)
+        if (isDev) console.log("[Convex Auth] Allowing 127.0.0.1 URL:", redirectTo)
         return redirectTo
       }
 
-      // For production, allow your app's domain
-      // Add your production domain here when deploying
-      console.log("[Convex Auth] Returning redirectTo as-is:", redirectTo)
-      return redirectTo
+      // Production: only allow URLs that match the configured SITE_URL.
+      // Anything else is treated as untrusted and falls back to the default
+      // app scheme to prevent open-redirect abuse.
+      const siteUrl = process.env.SITE_URL
+      if (siteUrl && redirectTo.startsWith(siteUrl)) {
+        if (isDev) console.log("[Convex Auth] Allowing SITE_URL match:", redirectTo)
+        return redirectTo
+      }
+
+      console.error(
+        "[Convex Auth] Rejected untrusted redirectTo, falling back to default",
+      )
+      return defaultRedirect
     },
   },
 })

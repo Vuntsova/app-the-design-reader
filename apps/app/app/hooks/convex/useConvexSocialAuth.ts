@@ -13,6 +13,7 @@ import * as Linking from "expo-linking"
 import { useAuthActions } from "@convex-dev/auth/react"
 
 import { logger } from "../../utils/Logger"
+import { clearOAuthState, createOAuthState } from "../../utils/oauthState"
 
 // ============================================================================
 // Platform-specific imports
@@ -171,11 +172,13 @@ export function useConvexSocialAuth(): UseConvexSocialAuthReturn {
         }
 
         if (result.type === "cancel" || result.type === "dismiss") {
+          clearOAuthState()
           return { error: new Error("OAuth flow cancelled") }
         }
 
         return { error: null }
       } catch (error) {
+        clearOAuthState()
         logger.error(`[ConvexSocialAuth] OAuth flow failed`, {}, error as Error)
         return { error: error as Error }
       }
@@ -190,11 +193,22 @@ export function useConvexSocialAuth(): UseConvexSocialAuthReturn {
     async (provider: SocialProvider): Promise<SocialAuthResult> => {
       setLoading(true)
 
+      // Create and persist a CSRF state token before opening the OAuth flow.
+      // AuthCallbackScreen calls consumeOAuthState() with the state echoed back
+      // in the callback URL — if storage is empty or the values don't match,
+      // the callback is rejected. Mirrors the Supabase social-auth path.
+      const oauthState = createOAuthState()
+
       try {
         const redirectTo = getRedirectUri()
 
-        // Start the OAuth flow - only pass params if redirectTo is defined
-        const params = redirectTo ? { redirectTo } : undefined
+        // Start the OAuth flow. Pass our CSRF state alongside redirectTo so
+        // Convex Auth forwards it through the OAuth roundtrip and we can
+        // validate it on callback.
+        const params: Record<string, string> = { state: oauthState }
+        if (redirectTo) {
+          params.redirectTo = redirectTo
+        }
         const result = await signIn(provider, params)
 
         // On web, the redirect happens automatically
@@ -218,6 +232,7 @@ export function useConvexSocialAuth(): UseConvexSocialAuthReturn {
 
         return { error: null }
       } catch (error) {
+        clearOAuthState()
         const errorMessage = error instanceof Error ? error.message : String(error)
 
         // Don't treat cancellation as an error to show to user

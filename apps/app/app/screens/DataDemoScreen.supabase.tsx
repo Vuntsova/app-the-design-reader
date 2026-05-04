@@ -8,6 +8,8 @@
  * - Loading and error states
  *
  * Copy this pattern for your own data-fetching screens with Supabase.
+ *
+ * To regenerate types from your live database: yarn supabase gen types typescript --local > apps/app/app/types/supabase.ts
  */
 
 import { FC, memo, useCallback, useState } from "react"
@@ -19,18 +21,16 @@ import { StyleSheet, useUnistyles } from "react-native-unistyles"
 import { Text, Button, Card, TextField, Spinner, EmptyState, Screen } from "@/components"
 import { useAuth } from "@/hooks"
 import { supabase } from "@/services/supabase"
+import type { SupabaseDatabase } from "@/types/supabase"
 
 // =============================================================================
 // TYPES
 // =============================================================================
 
-interface Post {
-  id: string
-  title: string
-  content: string
-  author_id: string
-  created_at: string
-}
+// Pull the row type straight from the generated Database type so the demo
+// is wrong at compile time if the table shape ever drifts.
+type Post = SupabaseDatabase["public"]["Tables"]["posts"]["Row"]
+type PostInsert = SupabaseDatabase["public"]["Tables"]["posts"]["Insert"]
 
 interface PostListItemProps {
   item: Post
@@ -93,8 +93,7 @@ const usePosts = () => {
   return useQuery({
     queryKey: ["posts"],
     queryFn: async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("posts")
         .select("*")
         .order("created_at", { ascending: false })
@@ -116,15 +115,14 @@ const useCreatePost = () => {
 
   return useMutation({
     mutationFn: async (newPost: { title: string; content: string }) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any)
-        .from("posts")
-        .insert({
-          ...newPost,
-          author_id: userId,
-        })
-        .select()
-        .single()
+      if (!userId) throw new Error("Not authenticated")
+
+      const insert: PostInsert = {
+        ...newPost,
+        author_id: userId,
+      }
+
+      const { data, error } = await supabase.from("posts").insert(insert).select().single()
 
       if (error) throw error
       return data as Post
@@ -165,8 +163,7 @@ const useDeletePost = () => {
 
   return useMutation({
     mutationFn: async (postId: string) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any).from("posts").delete().eq("id", postId)
+      const { error } = await supabase.from("posts").delete().eq("id", postId)
 
       if (error) throw error
     },
@@ -235,7 +232,7 @@ export const DataDemoScreen: FC = () => {
       <Screen preset="fixed" safeAreaEdges={["top", "bottom"]}>
         <View style={styles.centered}>
           <Spinner size="lg" />
-          <Text style={styles.loadingText}>Loading posts...</Text>
+          <Text style={styles.loadingText} tx="dataDemoScreen:loadingPosts" />
         </View>
       </Screen>
     )
@@ -247,9 +244,9 @@ export const DataDemoScreen: FC = () => {
         <View style={styles.centered}>
           <EmptyState
             preset="error"
-            heading="Failed to load posts"
+            headingTx="dataDemoScreen:errorHeading"
             content={error.message}
-            button="Retry"
+            buttonTx="dataDemoScreen:retryButton"
             buttonOnPress={handleRefresh}
           />
         </View>
@@ -262,10 +259,8 @@ export const DataDemoScreen: FC = () => {
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <Text preset="heading">Data Demo (Supabase)</Text>
-          <Text preset="caption" style={styles.subtitle}>
-            React Query + Supabase SDK
-          </Text>
+          <Text preset="heading" tx="dataDemoScreen:supabaseTitle" />
+          <Text preset="caption" style={styles.subtitle} tx="dataDemoScreen:supabaseSubtitle" />
         </View>
 
         {/* Create Post Form */}
@@ -273,17 +268,15 @@ export const DataDemoScreen: FC = () => {
           style={styles.formCard}
           ContentComponent={
             <>
-              <Text preset="subheading" style={styles.formTitle}>
-                Create Post
-              </Text>
+              <Text preset="subheading" style={styles.formTitle} tx="dataDemoScreen:formTitle" />
               <TextField
-                placeholder="Title"
+                placeholderTx="dataDemoScreen:titlePlaceholder"
                 value={title}
                 onChangeText={setTitle}
                 style={styles.input}
               />
               <TextField
-                placeholder="Content"
+                placeholderTx="dataDemoScreen:contentPlaceholder"
                 value={content}
                 onChangeText={setContent}
                 multiline
@@ -291,7 +284,7 @@ export const DataDemoScreen: FC = () => {
                 style={styles.input}
               />
               <Button
-                text="Create Post"
+                tx="dataDemoScreen:createButton"
                 variant="filled"
                 onPress={handleCreatePost}
                 disabled={createPost.isPending || !title.trim() || !content.trim()}
@@ -312,8 +305,8 @@ export const DataDemoScreen: FC = () => {
           ListEmptyComponent={
             <EmptyState
               icon="components"
-              heading="No posts yet"
-              content="Create your first post above"
+              headingTx="dataDemoScreen:emptyHeading"
+              contentTx="dataDemoScreen:emptyContent"
             />
           }
         />

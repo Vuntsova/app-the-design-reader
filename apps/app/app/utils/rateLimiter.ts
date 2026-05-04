@@ -6,11 +6,95 @@
  * rate limiting should also be implemented.
  */
 
+import * as Application from "expo-application"
+import { Platform } from "react-native"
+
 import { RATE_LIMIT } from "@/config/constants"
 
 import { logger } from "./Logger"
 import { storage } from "./storage"
 import * as storageUtils from "./storage"
+
+const INSTALL_ID_KEY = "app:installId"
+
+/**
+ * Generate a non-cryptographic random hex token for use as an install ID
+ * fallback. Security doesn't matter here — this value only salts local
+ * rate-limit keys so an attacker on this device can't lock out a victim's
+ * email by sweeping it. The real defense lives on the server.
+ */
+function generateFallbackInstallId(): string {
+  let out = ""
+  for (let i = 0; i < 4; i++) {
+    out += Math.random().toString(36).slice(2, 12)
+  }
+  return out
+}
+
+/**
+ * Resolve a stable per-install ID, cached in MMKV under `app:installId`.
+ *
+ * Preference order:
+ *   1. Cached value in MMKV (set on a previous launch).
+ *   2. expo-application's platform install ID (Android: getAndroidId,
+ *      iOS: getIosIdForVendorAsync — fetched in the background and
+ *      promoted on the next launch).
+ *   3. A locally-generated random token.
+ *
+ * Resolved synchronously so the rate limiter (which exposes both async
+ * and sync-friendly call sites) can compute keys without awaiting.
+ */
+function resolveInstallId(): string {
+  try {
+    const cached = storageUtils.loadString(INSTALL_ID_KEY)
+    if (cached && cached.length > 0) return cached
+  } catch {
+    // fall through to derive a new one
+  }
+
+  let installId: string | null = null
+
+  try {
+    if (Platform.OS === "android") {
+      const androidId = Application.getAndroidId()
+      if (androidId && androidId.length > 0) installId = androidId
+    }
+  } catch {
+    // ignore — we'll fall back to the random token below
+  }
+
+  // On iOS getIosIdForVendorAsync is async; kick it off so a future launch
+  // can upgrade the cached value, but don't block the current call.
+  if (!installId && Platform.OS === "ios") {
+    Application.getIosIdForVendorAsync()
+      .then((id) => {
+        if (id && id.length > 0) {
+          try {
+            storageUtils.saveString(INSTALL_ID_KEY, id)
+          } catch {
+            // best-effort
+          }
+        }
+      })
+      .catch(() => {
+        // best-effort; the random fallback is already in use
+      })
+  }
+
+  if (!installId) installId = generateFallbackInstallId()
+
+  try {
+    storageUtils.saveString(INSTALL_ID_KEY, installId)
+  } catch {
+    // best-effort
+  }
+
+  return installId
+}
+
+// Resolved once at module init so all RateLimiter instances share a key
+// salt without doing async work on the hot path.
+const INSTALL_ID = resolveInstallId()
 
 declare global {
   // eslint-disable-next-line no-var
@@ -45,15 +129,24 @@ class RateLimiter {
   }
 
   /**
-   * Get storage key for rate limit entry
+   * Get storage key for rate limit entry.
+   *
+   * Keys are salted with a per-install ID so an attacker sweeping a
+   * victim's email on their own device can't push a counter that locks
+   * the victim out when they try to sign in on their own phone. This is
+   * a UX guard only — server-side rate limits are the real defense.
    */
   private getStorageKey(identifier: string): string {
-    return `${this.config.keyPrefix}:${identifier}`
+    return `${this.config.keyPrefix}:${INSTALL_ID}:${identifier}`
   }
 
   /**
-   * Check if an action is allowed
-   * Returns true if allowed, false if rate limited
+   * Check if an action is allowed.
+   * Returns true if allowed, false if rate limited.
+   *
+   * Keyed by install ID + identifier so an attacker can't lock another
+   * user's email from their own device. This is a UX guard only —
+   * server-side limits are the real defense.
    */
   async isAllowed(identifier: string): Promise<boolean> {
     try {

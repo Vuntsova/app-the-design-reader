@@ -152,45 +152,47 @@ http.route({
   }),
 })
 
-// Debug route to catch unhandled requests
-// This helps debug OAuth redirect issues
-http.route({
-  path: "/",
-  method: "GET",
-  handler: httpAction(async (ctx, request) => {
-    const url = new URL(request.url)
-    const code = url.searchParams.get("code")
-    const error = url.searchParams.get("error")
+// Debug route to catch unhandled requests at the root.
+// Only mounted in development to avoid leaking auth-flow details (codes,
+// query params, hints) via production logs/responses.
+if (process.env.NODE_ENV === "development") {
+  http.route({
+    path: "/",
+    method: "GET",
+    handler: httpAction(async (ctx, request) => {
+      const url = new URL(request.url)
+      const code = url.searchParams.get("code")
+      const error = url.searchParams.get("error")
 
-    console.log("[HTTP Debug] Root route hit", {
-      url: request.url,
-      hasCode: !!code,
-      hasError: !!error,
-      searchParams: Object.fromEntries(url.searchParams),
-    })
+      console.log("[HTTP Debug] Root route hit", {
+        url: request.url,
+        hasCode: !!code,
+        hasError: !!error,
+        searchParams: Object.fromEntries(url.searchParams),
+      })
 
-    // If there's a code, this might be an OAuth callback that didn't redirect properly
-    if (code) {
+      // If there's a code, this might be an OAuth callback that didn't redirect properly
+      if (code) {
+        return new Response(
+          JSON.stringify({
+            message: "OAuth callback received at root",
+            hint: "The redirectTo URL may not have been preserved. Check SITE_URL and redirect callback.",
+            code: code.substring(0, 10) + "...",
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        )
+      }
+
+      // Show status page
       return new Response(
-        JSON.stringify({
-          message: "OAuth callback received at root",
-          hint: "The redirectTo URL may not have been preserved. Check SITE_URL and redirect callback.",
-          code: code.substring(0, 10) + "...",
-        }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        },
-      )
-    }
-
-    // Show status page
-    return new Response(
-      `<!DOCTYPE html>
+        `<!DOCTYPE html>
 <html>
 <head><title>Convex Auth</title></head>
 <body style="font-family: sans-serif; padding: 40px; text-align: center;">
-  <h1>✅ Convex Auth is running</h1>
+  <h1>Convex Auth is running</h1>
   <p>OAuth callback endpoints are available at:</p>
   <ul style="list-style: none; padding: 0;">
     <li>/api/auth/callback/google</li>
@@ -199,12 +201,13 @@ http.route({
   </ul>
 </body>
 </html>`,
-      {
-        status: 200,
-        headers: { "Content-Type": "text/html" },
-      },
-    )
-  }),
-})
+        {
+          status: 200,
+          headers: { "Content-Type": "text/html" },
+        },
+      )
+    }),
+  })
+}
 
 export default http

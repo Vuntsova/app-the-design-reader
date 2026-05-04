@@ -35,14 +35,14 @@ export const getWidgetProfile = query({
   },
 })
 
-/**
- * Get widget data by table name (generic query for widget service)
- * Supports basic filtering and ordering
- */
+// Every case must scope by userId. New table cases must keep this invariant.
 export const getData = query({
   args: {
-    table: v.string(),
-    filters: v.optional(v.any()),
+    table: v.union(
+      v.literal("users"),
+      v.literal("posts"),
+      v.literal("notifications"),
+    ),
     limit: v.optional(v.number()),
     orderBy: v.optional(
       v.object({
@@ -60,10 +60,8 @@ export const getData = query({
     const { table, limit = 10 } = args
 
     try {
-      // Handle known tables
       switch (table) {
-        case "users":
-        case "profiles": {
+        case "users": {
           const user = await ctx.db.get(userId)
           return {
             data: user
@@ -99,8 +97,10 @@ export const getData = query({
           return { data: notifications, error: null }
         }
 
-        default:
-          return { data: null, error: `Unknown table: ${table}` }
+        default: {
+          const _exhaustive: never = table
+          return { data: null, error: `Unknown table: ${String(_exhaustive)}` }
+        }
       }
     } catch (error) {
       return {
