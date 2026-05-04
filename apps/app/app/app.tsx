@@ -34,6 +34,7 @@ import { initI18n, initializeLanguage } from "./i18n"
 import { AppNavigator } from "./navigators/AppNavigator"
 import { useNavigationPersistence } from "./navigators/navigationUtilities"
 import { BackendProvider } from "./providers"
+import { ErrorBoundary } from "./screens/ErrorScreen/ErrorBoundary"
 import { LoadingScreen } from "./screens/LoadingScreen"
 import { certificatePinning } from "./services/certificatePinning"
 import { logMockServicesStatus } from "./services/mocks"
@@ -47,7 +48,6 @@ import { webDimension } from "./types/webStyles"
 import { logger } from "./utils/Logger"
 import { securityCheck } from "./utils/securityCheck"
 import * as storage from "./utils/storage"
-import { ErrorBoundary } from "./screens/ErrorScreen/ErrorBoundary"
 
 type KeyboardProviderProps = { children?: React.ReactNode }
 

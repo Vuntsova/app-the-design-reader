@@ -5,6 +5,12 @@ All notable changes to Shipnative will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0-rc12] - 2026-05-04
+
+### Fixed
+
+- **CI lint failures**: Resolved 11 ESLint errors blocking `lint:check` in `apps/app` — `import/order` violations in `app.tsx`, `hooks/useAuth.ts`, and `services/preferencesSync.ts`, plus `prettier/prettier` formatting in `hooks/useRealtimeMessages.ts`, `screens/AuthCallbackScreen.tsx`, and `screens/PaywallScreen.tsx`.
+
 ## [1.0.0-rc11] - 2026-04-28
 
 ### Security

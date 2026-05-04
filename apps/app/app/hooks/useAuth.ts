@@ -16,6 +16,7 @@ import { Platform } from "react-native"
 import * as Linking from "expo-linking"
 
 import { env, isConvex } from "../config/env"
+import { clearPendingSyncs } from "../services/preferencesSync"
 import { useAuthStore } from "../stores/auth"
 import type {
   User,
@@ -24,7 +25,6 @@ import type {
   SignInCredentials,
   UpdateUserAttributes,
 } from "../types/auth"
-import { clearPendingSyncs } from "../services/preferencesSync"
 import { createAppUrl } from "../utils/appScheme"
 import { logger } from "../utils/Logger"
 import { clearOAuthState, consumeOAuthState, createOAuthState } from "../utils/oauthState"

@@ -14,12 +14,12 @@ import { Platform } from "react-native"
 import * as Device from "expo-device"
 import { UnistylesRuntime } from "react-native-unistyles"
 
+import { sentry } from "./sentry"
 import { isSupabase, isConvex } from "../config/env"
 import { useNotificationStore } from "../stores/notificationStore"
 import type { SupabaseDatabase, UserPreferences } from "../types/supabase"
 import { logger } from "../utils/Logger"
 import { storage } from "../utils/storage"
-import { sentry } from "./sentry"
 
 // Conditionally import Supabase - only when using Supabase backend
 // eslint-disable-next-line @typescript-eslint/no-require-imports

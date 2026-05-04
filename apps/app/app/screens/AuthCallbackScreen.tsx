@@ -148,9 +148,7 @@ export const AuthCallbackScreen = () => {
 
                 // Wait for the provider to settle. See the constant's comment
                 // above for why this is a fixed delay rather than a poll.
-                await new Promise((resolve) =>
-                  setTimeout(resolve, CONVEX_OAUTH_SETTLE_TIMEOUT_MS),
-                )
+                await new Promise((resolve) => setTimeout(resolve, CONVEX_OAUTH_SETTLE_TIMEOUT_MS))
               } catch (error) {
                 logger.warn("[AuthCallback] Convex auth import failed", { error })
               }

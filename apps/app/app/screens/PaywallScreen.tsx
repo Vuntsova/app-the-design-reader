@@ -362,10 +362,22 @@ export const PaywallScreen = () => {
           {/* Features list */}
           <View style={styles.featuresContainer}>
             {[
-              { titleKey: "paywallScreen:featureUnlimitedProjects" as const, descKey: "paywallScreen:featureUnlimitedProjectsDesc" as const },
-              { titleKey: "paywallScreen:featurePrioritySupport" as const, descKey: "paywallScreen:featurePrioritySupportDesc" as const },
-              { titleKey: "paywallScreen:featureAdvancedAnalytics" as const, descKey: "paywallScreen:featureAdvancedAnalyticsDesc" as const },
-              { titleKey: "paywallScreen:featureNoWatermarks" as const, descKey: "paywallScreen:featureNoWatermarksDesc" as const },
+              {
+                titleKey: "paywallScreen:featureUnlimitedProjects" as const,
+                descKey: "paywallScreen:featureUnlimitedProjectsDesc" as const,
+              },
+              {
+                titleKey: "paywallScreen:featurePrioritySupport" as const,
+                descKey: "paywallScreen:featurePrioritySupportDesc" as const,
+              },
+              {
+                titleKey: "paywallScreen:featureAdvancedAnalytics" as const,
+                descKey: "paywallScreen:featureAdvancedAnalyticsDesc" as const,
+              },
+              {
+                titleKey: "paywallScreen:featureNoWatermarks" as const,
+                descKey: "paywallScreen:featureNoWatermarksDesc" as const,
+              },
             ].map((feature, idx) => (
               <View key={idx} style={styles.featureRow}>
                 <View style={styles.featureCheck}>
@@ -415,11 +427,15 @@ export const PaywallScreen = () => {
                         </View>
                       </View>
                       <View style={styles.packageInfo}>
-                        <Text style={styles.packageName}>{isAnnual ? t("paywallScreen:annual") : t("paywallScreen:monthly")}</Text>
+                        <Text style={styles.packageName}>
+                          {isAnnual ? t("paywallScreen:annual") : t("paywallScreen:monthly")}
+                        </Text>
                         <Text style={styles.packagePrice}>{displayPrice}</Text>
                         {isAnnual && (
                           <Text style={styles.packageSavings}>
-                            {t("paywallScreen:savingsPerMonth", { price: (pricingPkg.price / 12).toFixed(2) })}
+                            {t("paywallScreen:savingsPerMonth", {
+                              price: (pricingPkg.price / 12).toFixed(2),
+                            })}
                           </Text>
                         )}
                       </View>

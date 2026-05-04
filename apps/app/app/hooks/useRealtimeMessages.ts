@@ -118,7 +118,9 @@ function useConvexRealtimeMessagesStub(
   }, [options.channelId])
 
   const reject = useCallback(
-    async () => ({ error: new Error("useRealtimeMessages is Supabase-only; use Convex useQuery/useMutation") }),
+    async () => ({
+      error: new Error("useRealtimeMessages is Supabase-only; use Convex useQuery/useMutation"),
+    }),
     [],
   )
 
