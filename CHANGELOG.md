@@ -5,6 +5,12 @@ All notable changes to Shipnative will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **`yarn setup` Convex path: `OnboardingScreen.tsx` left dangling imports**: `setup.ts` deleted `services/preferencesSync.ts` and `types/supabase.ts` for the Convex track but never rewrote `screens/OnboardingScreen.tsx`, which imports `syncGoalPreference` and the `OnboardingGoal` type from those files. Added a transformer that drops the `preferencesSync` import, inlines the `OnboardingGoal` union, and replaces the `syncGoalPreference(...)` call with a `logger.debug` placeholder (Convex projects sync goals via mutations).
+
 ## [1.0.0-rc13] - 2026-05-05
 
 A broad code-quality pass across the boilerplate. Backend security tightened, demo screens polished, a handful of subtle effects and animations rewritten to the idiomatic patterns. No breaking changes for consumers — public store/hook signatures stay the same.

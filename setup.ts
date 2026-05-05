@@ -1492,6 +1492,25 @@ const updateInlineConditionalRequiresForConvex = (selectedProvider: BackendProvi
     return content
   })
 
+  // OnboardingScreen.tsx - drop preferencesSync + types/supabase imports
+  // (both files are deleted when Convex is chosen). Inline the OnboardingGoal
+  // union and replace the syncGoalPreference call with a logger note.
+  updateFileContent("apps/app/app/screens/OnboardingScreen.tsx", (content) => {
+    content = content.replace(
+      /import \{ syncGoalPreference \} from "@\/services\/preferencesSync"\n/,
+      ""
+    )
+    content = content.replace(
+      /import type \{ OnboardingGoal \} from "@\/types\/supabase"\n/,
+      'type OnboardingGoal = "goalBuildApp" | "goalLearnReactNative" | "goalJustExploring"\n'
+    )
+    content = content.replace(
+      /if \(userId\) \{\s*\/\/ Fire-and-forget; another agent owns the storage layer\.\s*syncGoalPreference\(userId, selectedGoal\)\s*\} else \{\s*logger\.debug\([^)]*\)\s*\}/,
+      'logger.debug("🎯 [Onboarding] Goal selected (sync via Convex mutation)", { userId, selectedGoal })'
+    )
+    return content
+  })
+
   // hooks/index.ts - update comment about useAuth (keep Convex exports)
   updateFileContent("apps/app/app/hooks/index.ts", (content) => {
     // Update the comment about useAuth supporting both backends
