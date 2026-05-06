@@ -20,6 +20,7 @@ import { Platform } from "react-native"
 import { create } from "zustand"
 import { persist, createJSONStorage } from "zustand/middleware"
 
+import { useAuthStore } from "./auth"
 import { revenueCat } from "../services/revenuecat"
 import type {
   SubscriptionPlatform,
@@ -34,7 +35,6 @@ import { detectLifecycleEvent, getLifecycleEventDescription } from "../utils/sub
 // NOTE: This is a circular import — auth/* imports useSubscriptionStore from
 // here. It works because we only ever read useAuthStore inside function bodies
 // (initialize, subscribeToAuthChanges), never at module-evaluation time.
-import { useAuthStore } from "./auth"
 import type { AuthState } from "./auth/authTypes"
 
 interface SubscriptionState {

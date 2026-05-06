@@ -6,8 +6,8 @@
  * rate limiting should also be implemented.
  */
 
-import * as Application from "expo-application"
 import { Platform } from "react-native"
+import * as Application from "expo-application"
 
 import { RATE_LIMIT } from "@/config/constants"
 
