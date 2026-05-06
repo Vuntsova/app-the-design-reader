@@ -15,7 +15,15 @@
  */
 
 import { FC, useState } from "react"
-import { ScrollView, Switch, Pressable, View, Platform, useWindowDimensions } from "react-native"
+import {
+  ScrollView,
+  Switch,
+  Pressable,
+  View,
+  Platform,
+  StyleSheet as RNStyleSheet,
+  useWindowDimensions,
+} from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { api } from "@convex/_generated/api"
 import { Ionicons } from "@expo/vector-icons"
@@ -148,317 +156,315 @@ export const ProfileScreen: FC<ProfileScreenProps> = ({ navigation }) => {
         colors={[theme.colors.gradientStart, theme.colors.gradientMiddle, theme.colors.gradientEnd]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.gradient}
+        style={RNStyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[
+          styles.scrollContent,
+          contentStyle,
+          { paddingTop: insets.top + theme.spacing.lg },
+        ]}
+        showsVerticalScrollIndicator={false}
+        // No RefreshControl needed! Data is reactive
       >
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={[
-            styles.scrollContent,
-            contentStyle,
-            { paddingTop: insets.top + theme.spacing.lg },
-          ]}
-          showsVerticalScrollIndicator={false}
-          // No RefreshControl needed! Data is reactive
+        {/* Header */}
+        <Animated.View entering={FadeInDown.delay(0).springify()} style={styles.header}>
+          <Text style={styles.screenTitle} tx="profileScreen:title" />
+          <View style={styles.headerBadges}>
+            <Text preset="caption" style={styles.backendBadge}>
+              Convex (Reactive)
+            </Text>
+            <Ionicons name="flash" size={14} color={theme.colors.primary} />
+          </View>
+        </Animated.View>
+
+        {/* Profile Card */}
+        <Animated.View
+          entering={FadeInDown.delay(ANIMATION.STAGGER_DELAY).springify()}
+          style={styles.profileCard}
         >
-          {/* Header */}
-          <Animated.View entering={FadeInDown.delay(0).springify()} style={styles.header}>
-            <Text style={styles.screenTitle} tx="profileScreen:title" />
-            <View style={styles.headerBadges}>
-              <Text preset="caption" style={styles.backendBadge}>
-                Convex (Reactive)
-              </Text>
-              <Ionicons name="flash" size={14} color={theme.colors.primary} />
+          <View style={styles.profileCardInner}>
+            <Avatar
+              source={avatarUrl ? { uri: avatarUrl } : undefined}
+              fallback={userInitials}
+              size="xl"
+            />
+            <View style={styles.profileInfo}>
+              <Text style={styles.profileName}>{displayName}</Text>
+              <Text style={styles.profileEmail}>{user?.email}</Text>
+              {convexUser?.bio && (
+                <Text style={styles.profileBio} numberOfLines={2}>
+                  {convexUser.bio}
+                </Text>
+              )}
+              {isPro ? (
+                <View style={styles.proBadge}>
+                  <Ionicons name="diamond" size={12} color={theme.colors.background} />
+                  <Text style={styles.proText} tx="profileScreen:proBadge" />
+                  {isRevenueCatMock && <Text style={styles.mockBadge}> (Mock)</Text>}
+                </View>
+              ) : (
+                <Pressable
+                  style={styles.upgradeButton}
+                  onPress={() => {
+                    haptics.buttonPress()
+                    navigation.navigate("Paywall")
+                  }}
+                >
+                  <Text style={styles.upgradeText} tx="profileScreen:upgradeButton" />
+                </Pressable>
+              )}
             </View>
-          </Animated.View>
+          </View>
+        </Animated.View>
 
-          {/* Profile Card */}
-          <Animated.View
-            entering={FadeInDown.delay(ANIMATION.STAGGER_DELAY).springify()}
-            style={styles.profileCard}
-          >
-            <View style={styles.profileCardInner}>
-              <Avatar
-                source={avatarUrl ? { uri: avatarUrl } : undefined}
-                fallback={userInitials}
-                size="xl"
+        {/* Reactivity Info Card */}
+        <Animated.View
+          entering={FadeInDown.delay(ANIMATION.STAGGER_DELAY * 1.5).springify()}
+          style={styles.infoCard}
+        >
+          <View style={styles.infoRow}>
+            <Ionicons name="sync" size={20} color={theme.colors.primary} />
+            <Text preset="caption" style={styles.infoText}>
+              Profile data syncs in real-time across all your devices!
+            </Text>
+          </View>
+        </Animated.View>
+
+        {/* Settings Section */}
+        <Animated.View entering={FadeInDown.delay(ANIMATION.STAGGER_DELAY * 2).springify()}>
+          <Text style={styles.sectionTitle} tx="profileScreen:settingsTitle" />
+        </Animated.View>
+        <Animated.View
+          entering={FadeInDown.delay(ANIMATION.STAGGER_DELAY * 2.5).springify()}
+          style={styles.menuGroup}
+        >
+          <MenuItem
+            icon="person-outline"
+            title={t("profileScreen:personalInfo")}
+            subtitle={t("profileScreen:personalInfoSubtitle")}
+            onPress={() => setEditModalVisible(true)}
+          />
+          <View style={styles.divider} />
+          <MenuItem
+            icon="notifications-outline"
+            title={t("profileScreen:notifications")}
+            subtitle={t("profileScreen:notificationsSubtitle")}
+            rightElement={
+              <Switch
+                value={isPushEnabled}
+                onValueChange={handleTogglePush}
+                trackColor={{ false: theme.colors.borderSecondary, true: theme.colors.primary }}
+                thumbColor={theme.colors.card}
               />
-              <View style={styles.profileInfo}>
-                <Text style={styles.profileName}>{displayName}</Text>
-                <Text style={styles.profileEmail}>{user?.email}</Text>
-                {convexUser?.bio && (
-                  <Text style={styles.profileBio} numberOfLines={2}>
-                    {convexUser.bio}
-                  </Text>
-                )}
-                {isPro ? (
-                  <View style={styles.proBadge}>
-                    <Ionicons name="diamond" size={12} color={theme.colors.background} />
-                    <Text style={styles.proText} tx="profileScreen:proBadge" />
-                    {isRevenueCatMock && <Text style={styles.mockBadge}> (Mock)</Text>}
-                  </View>
-                ) : (
-                  <Pressable
-                    style={styles.upgradeButton}
-                    onPress={() => {
-                      haptics.buttonPress()
-                      navigation.navigate("Paywall")
-                    }}
-                  >
-                    <Text style={styles.upgradeText} tx="profileScreen:upgradeButton" />
-                  </Pressable>
-                )}
-              </View>
-            </View>
-          </Animated.View>
-
-          {/* Reactivity Info Card */}
-          <Animated.View
-            entering={FadeInDown.delay(ANIMATION.STAGGER_DELAY * 1.5).springify()}
-            style={styles.infoCard}
-          >
-            <View style={styles.infoRow}>
-              <Ionicons name="sync" size={20} color={theme.colors.primary} />
-              <Text preset="caption" style={styles.infoText}>
-                Profile data syncs in real-time across all your devices!
-              </Text>
-            </View>
-          </Animated.View>
-
-          {/* Settings Section */}
-          <Animated.View entering={FadeInDown.delay(ANIMATION.STAGGER_DELAY * 2).springify()}>
-            <Text style={styles.sectionTitle} tx="profileScreen:settingsTitle" />
-          </Animated.View>
-          <Animated.View
-            entering={FadeInDown.delay(ANIMATION.STAGGER_DELAY * 2.5).springify()}
-            style={styles.menuGroup}
-          >
-            <MenuItem
-              icon="person-outline"
-              title={t("profileScreen:personalInfo")}
-              subtitle={t("profileScreen:personalInfoSubtitle")}
-              onPress={() => setEditModalVisible(true)}
-            />
-            <View style={styles.divider} />
-            <MenuItem
-              icon="notifications-outline"
-              title={t("profileScreen:notifications")}
-              subtitle={t("profileScreen:notificationsSubtitle")}
-              rightElement={
-                <Switch
-                  value={isPushEnabled}
-                  onValueChange={handleTogglePush}
-                  trackColor={{ false: theme.colors.borderSecondary, true: theme.colors.primary }}
-                  thumbColor={theme.colors.card}
-                />
-              }
-            />
-            <View style={styles.divider} />
-            <MenuItem
-              icon="moon-outline"
-              title={t("profileScreen:darkMode")}
-              rightElement={
-                <Switch
-                  value={UnistylesRuntime.themeName === "dark"}
-                  onValueChange={toggleThemeMode}
-                  trackColor={{ false: theme.colors.borderSecondary, true: theme.colors.primary }}
-                  thumbColor={theme.colors.card}
-                />
-              }
-            />
-            <View style={styles.divider} />
-            <MenuItem
-              icon="language-outline"
-              title={t("settings:language")}
-              subtitle={t("profileScreen:languageSubtitle")}
-              onPress={() => setLanguageModalVisible(true)}
-            />
-            {isWidgetsEnabled && (
-              <>
-                <View style={styles.divider} />
-                <MenuItem
-                  icon="apps-outline"
-                  title={t("profileScreen:widgets")}
-                  subtitle={
-                    syncStatus === "syncing"
-                      ? t("profileScreen:widgetsSyncing")
-                      : userWidgetsEnabled
-                        ? t("profileScreen:widgetsEnabled")
-                        : t("profileScreen:widgetsDisabled")
-                  }
-                  rightElement={
-                    <Switch
-                      value={userWidgetsEnabled}
-                      onValueChange={handleToggleWidgets}
-                      trackColor={{
-                        false: theme.colors.borderSecondary,
-                        true: theme.colors.primary,
-                      }}
-                      thumbColor={theme.colors.card}
-                      disabled={syncStatus === "syncing"}
-                    />
-                  }
-                />
-              </>
-            )}
-          </Animated.View>
-
-          {/* Support Section */}
-          <Animated.View entering={FadeInDown.delay(ANIMATION.STAGGER_DELAY * 3).springify()}>
-            <Text style={styles.sectionTitle} tx="profileScreen:supportTitle" />
-          </Animated.View>
-          <Animated.View
-            entering={FadeInDown.delay(ANIMATION.STAGGER_DELAY * 3.5).springify()}
-            style={styles.menuGroup}
-          >
-            <MenuItem icon="help-circle-outline" title={t("profileScreen:helpCenter")} />
-            <View style={styles.divider} />
-            <MenuItem icon="shield-checkmark-outline" title={t("profileScreen:privacyPolicy")} />
-          </Animated.View>
-
-          {/* Development Section - Only visible in dev mode */}
-          {features.enableDebugLogging && (
+            }
+          />
+          <View style={styles.divider} />
+          <MenuItem
+            icon="moon-outline"
+            title={t("profileScreen:darkMode")}
+            rightElement={
+              <Switch
+                value={UnistylesRuntime.themeName === "dark"}
+                onValueChange={toggleThemeMode}
+                trackColor={{ false: theme.colors.borderSecondary, true: theme.colors.primary }}
+                thumbColor={theme.colors.card}
+              />
+            }
+          />
+          <View style={styles.divider} />
+          <MenuItem
+            icon="language-outline"
+            title={t("settings:language")}
+            subtitle={t("profileScreen:languageSubtitle")}
+            onPress={() => setLanguageModalVisible(true)}
+          />
+          {isWidgetsEnabled && (
             <>
-              <Animated.View entering={FadeInDown.delay(ANIMATION.STAGGER_DELAY * 3.8).springify()}>
-                <Text style={styles.sectionTitle} tx="profileScreen:developmentTitle" />
-              </Animated.View>
-              <Animated.View
-                entering={FadeInDown.delay(ANIMATION.STAGGER_DELAY * 4).springify()}
-                style={styles.menuGroup}
-              >
-                {isRevenueCatMock && (
-                  <>
-                    <MenuItem
-                      icon="diamond-outline"
-                      title={isPro ? "Unsubscribe (Mock)" : "Subscribe (Mock)"}
-                      subtitle={
-                        isPro
-                          ? "Toggle off mock Pro subscription"
-                          : "Toggle on mock Pro subscription"
-                      }
-                      rightElement={
-                        <Switch
-                          value={isPro}
-                          onValueChange={handleMockToggleSubscription}
-                          trackColor={{
-                            false: theme.colors.borderSecondary,
-                            true: theme.colors.palette.success500,
-                          }}
-                          thumbColor={theme.colors.card}
-                        />
-                      }
-                    />
-                    <View style={styles.divider} />
-                  </>
-                )}
-                <MenuItem
-                  icon="bug-outline"
-                  title={t("profileScreen:testSentryError")}
-                  subtitle={t("profileScreen:testSentryErrorSubtitle")}
-                  onPress={() => {
-                    haptics.buttonPress()
-                    testErrors.testSimpleError()
-                  }}
-                />
-                <View style={styles.divider} />
-                <MenuItem
-                  icon="warning-outline"
-                  title={t("profileScreen:testWarning")}
-                  subtitle={t("profileScreen:testWarningSubtitle")}
-                  onPress={() => {
-                    haptics.buttonPress()
-                    testErrors.testWarningMessage()
-                  }}
-                />
-                <View style={styles.divider} />
-                <MenuItem
-                  icon="information-circle-outline"
-                  title={t("profileScreen:testInfoMessage")}
-                  subtitle={t("profileScreen:testInfoMessageSubtitle")}
-                  onPress={() => {
-                    haptics.buttonPress()
-                    testErrors.testInfoMessage()
-                  }}
-                />
-                <View style={styles.divider} />
-                <MenuItem
-                  icon="code-outline"
-                  title={t("profileScreen:testErrorWithContext")}
-                  subtitle={t("profileScreen:testErrorWithContextSubtitle")}
-                  onPress={() => {
-                    haptics.buttonPress()
-                    testErrors.testErrorWithContext()
-                  }}
-                />
-              </Animated.View>
+              <View style={styles.divider} />
+              <MenuItem
+                icon="apps-outline"
+                title={t("profileScreen:widgets")}
+                subtitle={
+                  syncStatus === "syncing"
+                    ? t("profileScreen:widgetsSyncing")
+                    : userWidgetsEnabled
+                      ? t("profileScreen:widgetsEnabled")
+                      : t("profileScreen:widgetsDisabled")
+                }
+                rightElement={
+                  <Switch
+                    value={userWidgetsEnabled}
+                    onValueChange={handleToggleWidgets}
+                    trackColor={{
+                      false: theme.colors.borderSecondary,
+                      true: theme.colors.primary,
+                    }}
+                    thumbColor={theme.colors.card}
+                    disabled={syncStatus === "syncing"}
+                  />
+                }
+              />
             </>
           )}
+        </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(ANIMATION.STAGGER_DELAY * 4).springify()}>
-            <Text style={styles.sectionTitle} tx="profileScreen:accountTitle" />
-          </Animated.View>
-          <Animated.View
-            entering={FadeInDown.delay(ANIMATION.STAGGER_DELAY * 4.5).springify()}
-            style={styles.dangerCard}
-          >
-            <MenuItem
-              icon="log-out-outline"
-              title={t("profileScreen:signOut")}
-              subtitle={t("profileScreen:signOutSubtitle")}
-              onPress={handleSignOut}
-            />
-            <View style={styles.divider} />
-            <View style={styles.dangerHeader}>
-              <View style={styles.dangerCopy}>
-                <Text style={styles.dangerTitle} tx="profileScreen:deleteAccount" />
-                <Text style={styles.dangerSubtitle} tx="profileScreen:deleteAccountSubtitle" />
-              </View>
-              <View style={styles.dangerBadge}>
-                <Ionicons name="shield-half-outline" size={16} color={theme.colors.error} />
-                <Text style={styles.dangerBadgeText} tx="profileScreen:deleteAccountPrivacy" />
-              </View>
+        {/* Support Section */}
+        <Animated.View entering={FadeInDown.delay(ANIMATION.STAGGER_DELAY * 3).springify()}>
+          <Text style={styles.sectionTitle} tx="profileScreen:supportTitle" />
+        </Animated.View>
+        <Animated.View
+          entering={FadeInDown.delay(ANIMATION.STAGGER_DELAY * 3.5).springify()}
+          style={styles.menuGroup}
+        >
+          <MenuItem icon="help-circle-outline" title={t("profileScreen:helpCenter")} />
+          <View style={styles.divider} />
+          <MenuItem icon="shield-checkmark-outline" title={t("profileScreen:privacyPolicy")} />
+        </Animated.View>
+
+        {/* Development Section - Only visible in dev mode */}
+        {features.enableDebugLogging && (
+          <>
+            <Animated.View entering={FadeInDown.delay(ANIMATION.STAGGER_DELAY * 3.8).springify()}>
+              <Text style={styles.sectionTitle} tx="profileScreen:developmentTitle" />
+            </Animated.View>
+            <Animated.View
+              entering={FadeInDown.delay(ANIMATION.STAGGER_DELAY * 4).springify()}
+              style={styles.menuGroup}
+            >
+              {isRevenueCatMock && (
+                <>
+                  <MenuItem
+                    icon="diamond-outline"
+                    title={isPro ? "Unsubscribe (Mock)" : "Subscribe (Mock)"}
+                    subtitle={
+                      isPro ? "Toggle off mock Pro subscription" : "Toggle on mock Pro subscription"
+                    }
+                    rightElement={
+                      <Switch
+                        value={isPro}
+                        onValueChange={handleMockToggleSubscription}
+                        trackColor={{
+                          false: theme.colors.borderSecondary,
+                          true: theme.colors.palette.success500,
+                        }}
+                        thumbColor={theme.colors.card}
+                      />
+                    }
+                  />
+                  <View style={styles.divider} />
+                </>
+              )}
+              <MenuItem
+                icon="bug-outline"
+                title={t("profileScreen:testSentryError")}
+                subtitle={t("profileScreen:testSentryErrorSubtitle")}
+                onPress={() => {
+                  haptics.buttonPress()
+                  testErrors.testSimpleError()
+                }}
+              />
+              <View style={styles.divider} />
+              <MenuItem
+                icon="warning-outline"
+                title={t("profileScreen:testWarning")}
+                subtitle={t("profileScreen:testWarningSubtitle")}
+                onPress={() => {
+                  haptics.buttonPress()
+                  testErrors.testWarningMessage()
+                }}
+              />
+              <View style={styles.divider} />
+              <MenuItem
+                icon="information-circle-outline"
+                title={t("profileScreen:testInfoMessage")}
+                subtitle={t("profileScreen:testInfoMessageSubtitle")}
+                onPress={() => {
+                  haptics.buttonPress()
+                  testErrors.testInfoMessage()
+                }}
+              />
+              <View style={styles.divider} />
+              <MenuItem
+                icon="code-outline"
+                title={t("profileScreen:testErrorWithContext")}
+                subtitle={t("profileScreen:testErrorWithContextSubtitle")}
+                onPress={() => {
+                  haptics.buttonPress()
+                  testErrors.testErrorWithContext()
+                }}
+              />
+            </Animated.View>
+          </>
+        )}
+
+        <Animated.View entering={FadeInDown.delay(ANIMATION.STAGGER_DELAY * 4).springify()}>
+          <Text style={styles.sectionTitle} tx="profileScreen:accountTitle" />
+        </Animated.View>
+        <Animated.View
+          entering={FadeInDown.delay(ANIMATION.STAGGER_DELAY * 4.5).springify()}
+          style={styles.dangerCard}
+        >
+          <MenuItem
+            icon="log-out-outline"
+            title={t("profileScreen:signOut")}
+            subtitle={t("profileScreen:signOutSubtitle")}
+            onPress={handleSignOut}
+          />
+          <View style={styles.divider} />
+          <View style={styles.dangerHeader}>
+            <View style={styles.dangerCopy}>
+              <Text style={styles.dangerTitle} tx="profileScreen:deleteAccount" />
+              <Text style={styles.dangerSubtitle} tx="profileScreen:deleteAccountSubtitle" />
             </View>
-
-            <View style={styles.dangerBullets}>
-              <View style={styles.dangerBullet}>
-                <View style={styles.dangerIcon}>
-                  <Ionicons name="trash-outline" size={16} color={theme.colors.error} />
-                </View>
-                <Text style={styles.dangerBulletText} tx="profileScreen:deleteAccountBullet1" />
-              </View>
-              <View style={styles.dangerBullet}>
-                <View style={styles.dangerIcon}>
-                  <Ionicons name="receipt-outline" size={16} color={theme.colors.error} />
-                </View>
-                <Text style={styles.dangerBulletText} tx="profileScreen:deleteAccountBullet2" />
-              </View>
-              <View style={styles.dangerBullet}>
-                <View style={styles.dangerIcon}>
-                  <Ionicons name="log-out-outline" size={16} color={theme.colors.error} />
-                </View>
-                <Text style={styles.dangerBulletText} tx="profileScreen:deleteAccountBullet3" />
-              </View>
+            <View style={styles.dangerBadge}>
+              <Ionicons name="shield-half-outline" size={16} color={theme.colors.error} />
+              <Text style={styles.dangerBadgeText} tx="profileScreen:deleteAccountPrivacy" />
             </View>
+          </View>
 
-            <Button
-              tx="profileScreen:deleteMyAccount"
-              variant="danger"
-              onPress={() => {
-                haptics.delete()
-                setDeleteModalVisible(true)
-              }}
-              style={styles.dangerButton}
-            />
-          </Animated.View>
+          <View style={styles.dangerBullets}>
+            <View style={styles.dangerBullet}>
+              <View style={styles.dangerIcon}>
+                <Ionicons name="trash-outline" size={16} color={theme.colors.error} />
+              </View>
+              <Text style={styles.dangerBulletText} tx="profileScreen:deleteAccountBullet1" />
+            </View>
+            <View style={styles.dangerBullet}>
+              <View style={styles.dangerIcon}>
+                <Ionicons name="receipt-outline" size={16} color={theme.colors.error} />
+              </View>
+              <Text style={styles.dangerBulletText} tx="profileScreen:deleteAccountBullet2" />
+            </View>
+            <View style={styles.dangerBullet}>
+              <View style={styles.dangerIcon}>
+                <Ionicons name="log-out-outline" size={16} color={theme.colors.error} />
+              </View>
+              <Text style={styles.dangerBulletText} tx="profileScreen:deleteAccountBullet3" />
+            </View>
+          </View>
 
-          <Animated.View entering={FadeInDown.delay(ANIMATION.STAGGER_DELAY * 5.2).springify()}>
-            <Text
-              style={styles.versionText}
-              tx="profileScreen:version"
-              txOptions={{ version: "1.0.0", build: "12" }}
-            />
-          </Animated.View>
-        </ScrollView>
-      </LinearGradient>
+          <Button
+            tx="profileScreen:deleteMyAccount"
+            variant="danger"
+            onPress={() => {
+              haptics.delete()
+              setDeleteModalVisible(true)
+            }}
+            style={styles.dangerButton}
+          />
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(ANIMATION.STAGGER_DELAY * 5.2).springify()}>
+          <Text
+            style={styles.versionText}
+            tx="profileScreen:version"
+            txOptions={{ version: "1.0.0", build: "12" }}
+          />
+        </Animated.View>
+      </ScrollView>
 
       {/* Edit Profile Modal - Convex version with reactive mutations */}
       <EditProfileModalConvex
@@ -488,13 +494,7 @@ const styles = StyleSheet.create((theme) => ({
     flex: 1,
     backgroundColor: theme.colors.background,
     ...(isWeb && {
-      minHeight: webDimension("100vh"),
-    }),
-  },
-  gradient: {
-    flex: 1,
-    ...(isWeb && {
-      minHeight: webDimension("100vh"),
+      height: webDimension("100%"),
     }),
   },
   scrollView: {

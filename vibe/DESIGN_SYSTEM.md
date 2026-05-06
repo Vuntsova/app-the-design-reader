@@ -422,8 +422,10 @@ gradients.subtle   // Light gray gradient
 
 ## Screen Template
 
+> **Web scroll caveat**: don't wrap a `ScrollView` inside a `LinearGradient` that uses `flex:1 + minHeight:100vh`. Stacking two `100vh`-floor layers between the navigator viewport and the `ScrollView` breaks ScrollView's height constraint on web — content past the fold becomes unreachable. Render the gradient as an absolutely-positioned background instead (`StyleSheet.absoluteFill`, `pointerEvents="none"`) so the `ScrollView` is a direct child of the screen container.
+
 ```tsx
-import { View, StyleSheet, ScrollView, TouchableOpacity, TextInput } from "react-native"
+import { View, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { LinearGradient } from "expo-linear-gradient"
 import { designTokens, gradients, commonStyles } from "@/theme/designTokens"
@@ -432,29 +434,35 @@ import { Text } from "@/components"
 export const MyScreen = () => {
   return (
     <View style={styles.container}>
-      <LinearGradient {...gradients.primary} style={styles.gradient}>
-        <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
-          <ScrollView 
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={commonStyles.card}>
-              <Text style={styles.title}>Title</Text>
-              <TextInput style={commonStyles.input} />
-              <TouchableOpacity style={commonStyles.buttonPrimary}>
-                <Text style={styles.buttonText}>Continue</Text>
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
-        </SafeAreaView>
-      </LinearGradient>
+      <LinearGradient
+        {...gradients.primary}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
+      <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={commonStyles.card}>
+            <Text style={styles.title}>Title</Text>
+            <TextInput style={commonStyles.input} />
+            <TouchableOpacity style={commonStyles.buttonPrimary}>
+              <Text style={styles.buttonText}>Continue</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  gradient: { flex: 1 },
+  container: {
+    flex: 1,
+    // On web, give the screen a fixed height so the inner ScrollView can overflow.
+    ...(Platform.OS === "web" && { height: "100%" as unknown as number }),
+  },
   safeArea: { flex: 1 },
   scrollContent: {
     flexGrow: 1,

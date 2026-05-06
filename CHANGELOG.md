@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`HomeScreen` and `ProfileScreen` not scrollable on web**: Both screens wrapped their `ScrollView` in a `<LinearGradient>` that itself had `flex:1 + minHeight:100vh`. Stacking two layers with `minHeight:100vh` between the constrained navigator viewport and the `ScrollView` left the inner ScrollView unable to constrain its height, so content past the fold was unreachable on web. Moved the gradient to an absolutely-positioned background (`StyleSheet.absoluteFill`, `pointerEvents="none"`) and made the outer container use `height:100%` on web. The other tab screens (Components, Paywall) already used the `<Container>` pattern and weren't affected.
 - **`yarn setup` Convex path: `OnboardingScreen.tsx` left dangling imports**: `setup.ts` deleted `services/preferencesSync.ts` and `types/supabase.ts` for the Convex track but never rewrote `screens/OnboardingScreen.tsx`, which imports `syncGoalPreference` and the `OnboardingGoal` type from those files. Added a transformer that drops the `preferencesSync` import, inlines the `OnboardingGoal` union, and replaces the `syncGoalPreference(...)` call with a `logger.debug` placeholder (Convex projects sync goals via mutations).
 
 ## [1.0.0-rc13] - 2026-05-05

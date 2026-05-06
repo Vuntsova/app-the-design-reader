@@ -1,5 +1,12 @@
 import { FC } from "react"
-import { View, ScrollView, Pressable, Platform, useWindowDimensions } from "react-native"
+import {
+  View,
+  ScrollView,
+  Pressable,
+  Platform,
+  StyleSheet as RNStyleSheet,
+  useWindowDimensions,
+} from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { Ionicons } from "@expo/vector-icons"
 import Animated, { FadeInDown } from "react-native-reanimated"
@@ -73,210 +80,200 @@ export const HomeScreen: FC<HomeScreenProps> = function HomeScreen(_props) {
         colors={[theme.colors.gradientStart, theme.colors.gradientMiddle, theme.colors.gradientEnd]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.gradient}
+        style={RNStyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[
+          styles.scrollContent,
+          contentStyle,
+          { paddingTop: insets.top + theme.spacing.lg },
+        ]}
+        showsVerticalScrollIndicator={false}
       >
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={[
-            styles.scrollContent,
-            contentStyle,
-            { paddingTop: insets.top + theme.spacing.lg },
-          ]}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Header Section */}
-          <Animated.View entering={FadeInDown.delay(0).springify()} style={styles.header}>
-            <View style={styles.headerLeft}>
-              <Avatar
-                source={avatarUrl ? { uri: avatarUrl } : undefined}
-                fallback={userInitials}
-                size="md"
-              />
-              <View style={styles.headerText}>
-                <Text size="sm" color="secondary" tx="homeScreen:goodMorning" />
-                <Text size="xl" weight="bold">
-                  {userName}
-                </Text>
-              </View>
-            </View>
-            <Pressable style={styles.notificationButton} onPress={handleTogglePush}>
-              <Ionicons
-                name={isPushEnabled ? "notifications" : "notifications-off-outline"}
-                size={24}
-                color={theme.colors.foreground}
-              />
-              {isPushEnabled && <Badge dot variant="error" size="sm" />}
-            </Pressable>
-          </Animated.View>
-
-          {/* Featured Card */}
-          <PressableCard style={styles.featuredCard} delay={ANIMATION.STAGGER_DELAY}>
-            <View style={styles.featuredContent}>
-              <Badge tx="homeScreen:dailyChallenge" variant="info" size="sm" />
-              <View style={styles.titleRow}>
-                <View style={styles.featuredIconBox}>
-                  <Ionicons
-                    name="flower-outline"
-                    size={24}
-                    color={theme.colors.palette.primary600}
-                  />
-                </View>
-                <Text
-                  size="2xl"
-                  weight="bold"
-                  style={styles.featuredTitle}
-                  tx="homeScreen:featuredTitle"
-                />
-              </View>
-              <Text
-                color="secondary"
-                style={styles.featuredSubtitle}
-                tx="homeScreen:featuredSubtitle"
-              />
-              <Pressable style={styles.startButton} onPress={() => haptics.buttonPress()}>
-                <Text weight="semiBold" style={styles.startButtonText} tx="homeScreen:startNow" />
-                <Ionicons name="play-circle" size={22} color={theme.colors.card} />
-              </Pressable>
-            </View>
-          </PressableCard>
-
-          {/* Stats Row — backed by real store values */}
-          <View style={styles.statsRow}>
-            <PressableCard
-              style={styles.statCard}
-              containerStyle={styles.statCardContainer}
-              delay={ANIMATION.STAGGER_DELAY * 2}
-            >
-              <View style={styles.statIconBox}>
-                <Ionicons
-                  name="notifications-outline"
-                  size={18}
-                  color={theme.colors.palette.accent500}
-                />
-              </View>
-              <Text size="2xl" weight="bold">
-                {unreadCount}
+        {/* Header Section */}
+        <Animated.View entering={FadeInDown.delay(0).springify()} style={styles.header}>
+          <View style={styles.headerLeft}>
+            <Avatar
+              source={avatarUrl ? { uri: avatarUrl } : undefined}
+              fallback={userInitials}
+              size="md"
+            />
+            <View style={styles.headerText}>
+              <Text size="sm" color="secondary" tx="homeScreen:goodMorning" />
+              <Text size="xl" weight="bold">
+                {userName}
               </Text>
-              <Text size="xs" color="secondary" tx="homeScreen:statUnread" />
-            </PressableCard>
-            <PressableCard
-              style={styles.statCard}
-              containerStyle={styles.statCardContainer}
-              delay={ANIMATION.STAGGER_DELAY * 2.5}
-            >
-              <View style={styles.statIconBox}>
-                <Ionicons
-                  name={isPro ? "checkmark-circle" : "checkmark-circle-outline"}
-                  size={18}
-                  color={isPro ? theme.colors.success : theme.colors.foregroundTertiary}
-                />
+            </View>
+          </View>
+          <Pressable style={styles.notificationButton} onPress={handleTogglePush}>
+            <Ionicons
+              name={isPushEnabled ? "notifications" : "notifications-off-outline"}
+              size={24}
+              color={theme.colors.foreground}
+            />
+            {isPushEnabled && <Badge dot variant="error" size="sm" />}
+          </Pressable>
+        </Animated.View>
+
+        {/* Featured Card */}
+        <PressableCard style={styles.featuredCard} delay={ANIMATION.STAGGER_DELAY}>
+          <View style={styles.featuredContent}>
+            <Badge tx="homeScreen:dailyChallenge" variant="info" size="sm" />
+            <View style={styles.titleRow}>
+              <View style={styles.featuredIconBox}>
+                <Ionicons name="flower-outline" size={24} color={theme.colors.palette.primary600} />
               </View>
               <Text
                 size="2xl"
                 weight="bold"
-                tx={isPro ? "homeScreen:planPro" : "homeScreen:planFree"}
+                style={styles.featuredTitle}
+                tx="homeScreen:featuredTitle"
               />
-              <Text size="xs" color="secondary" tx="homeScreen:statPlan" />
-            </PressableCard>
-            <PressableCard
-              style={styles.statCard}
-              containerStyle={styles.statCardContainer}
-              delay={ANIMATION.STAGGER_DELAY * 3}
-            >
-              <View style={styles.statIconBox}>
-                <Ionicons name="mail-outline" size={18} color={theme.colors.warning} />
-              </View>
-              <Text size="2xl" weight="bold">
-                {totalNotifications}
-              </Text>
-              <Text size="xs" color="secondary" tx="homeScreen:statInbox" />
-            </PressableCard>
+            </View>
+            <Text
+              color="secondary"
+              style={styles.featuredSubtitle}
+              tx="homeScreen:featuredSubtitle"
+            />
+            <Pressable style={styles.startButton} onPress={() => haptics.buttonPress()}>
+              <Text weight="semiBold" style={styles.startButtonText} tx="homeScreen:startNow" />
+              <Ionicons name="play-circle" size={22} color={theme.colors.card} />
+            </Pressable>
           </View>
+        </PressableCard>
 
-          {/* Quick Actions */}
-          <Animated.View entering={FadeInDown.delay(ANIMATION.STAGGER_DELAY * 3.5).springify()}>
-            <Text size="xl" weight="bold" style={styles.sectionTitle} tx="homeScreen:explore" />
-          </Animated.View>
-
+        {/* Stats Row — backed by real store values */}
+        <View style={styles.statsRow}>
           <PressableCard
-            style={styles.actionCard}
-            onPress={handleNavigateToComponents}
-            delay={ANIMATION.STAGGER_DELAY * 4}
+            style={styles.statCard}
+            containerStyle={styles.statCardContainer}
+            delay={ANIMATION.STAGGER_DELAY * 2}
           >
-            <View style={styles.actionContent}>
-              <View style={styles.actionTitleRow}>
-                <View
-                  style={[styles.iconBox, { backgroundColor: theme.colors.palette.primary100 }]}
-                >
-                  <Ionicons name="cube-outline" size={24} color={theme.colors.palette.primary600} />
-                </View>
-                <Text weight="semiBold" style={styles.actionTitle} tx="homeScreen:uiComponents" />
-              </View>
-              <Text
-                size="sm"
-                color="secondary"
-                style={styles.actionDescription}
-                tx="homeScreen:uiComponentsDescription"
+            <View style={styles.statIconBox}>
+              <Ionicons
+                name="notifications-outline"
+                size={18}
+                color={theme.colors.palette.accent500}
               />
             </View>
-            <Ionicons name="chevron-forward" size={20} color={theme.colors.foregroundTertiary} />
+            <Text size="2xl" weight="bold">
+              {unreadCount}
+            </Text>
+            <Text size="xs" color="secondary" tx="homeScreen:statUnread" />
           </PressableCard>
-
           <PressableCard
-            style={styles.actionCard}
-            onPress={() => navigation.navigate("Profile")}
-            delay={ANIMATION.STAGGER_DELAY * 4.5}
+            style={styles.statCard}
+            containerStyle={styles.statCardContainer}
+            delay={ANIMATION.STAGGER_DELAY * 2.5}
           >
-            <View style={styles.actionContent}>
-              <View style={styles.actionTitleRow}>
-                <View
-                  style={[styles.iconBox, { backgroundColor: theme.colors.palette.secondary100 }]}
-                >
-                  <Ionicons
-                    name="person-outline"
-                    size={24}
-                    color={theme.colors.palette.secondary600}
-                  />
-                </View>
-                <Text weight="semiBold" style={styles.actionTitle} tx="homeScreen:myProfile" />
-              </View>
-              <Text
-                size="sm"
-                color="secondary"
-                style={styles.actionDescription}
-                tx="homeScreen:myProfileDescription"
+            <View style={styles.statIconBox}>
+              <Ionicons
+                name={isPro ? "checkmark-circle" : "checkmark-circle-outline"}
+                size={18}
+                color={isPro ? theme.colors.success : theme.colors.foregroundTertiary}
               />
             </View>
-            <Ionicons name="chevron-forward" size={20} color={theme.colors.foregroundTertiary} />
+            <Text
+              size="2xl"
+              weight="bold"
+              tx={isPro ? "homeScreen:planPro" : "homeScreen:planFree"}
+            />
+            <Text size="xs" color="secondary" tx="homeScreen:statPlan" />
           </PressableCard>
-
           <PressableCard
-            style={styles.actionCard}
-            onPress={() => navigation.navigate("Paywall")}
-            delay={ANIMATION.STAGGER_DELAY * 5}
+            style={styles.statCard}
+            containerStyle={styles.statCardContainer}
+            delay={ANIMATION.STAGGER_DELAY * 3}
           >
-            <View style={styles.actionContent}>
-              <View style={styles.actionTitleRow}>
-                <View style={[styles.iconBox, { backgroundColor: theme.colors.palette.accent100 }]}>
-                  <Ionicons name="star-outline" size={24} color={theme.colors.palette.accent600} />
-                </View>
-                <Text
-                  weight="semiBold"
-                  style={styles.actionTitle}
-                  tx="homeScreen:premiumFeatures"
+            <View style={styles.statIconBox}>
+              <Ionicons name="mail-outline" size={18} color={theme.colors.warning} />
+            </View>
+            <Text size="2xl" weight="bold">
+              {totalNotifications}
+            </Text>
+            <Text size="xs" color="secondary" tx="homeScreen:statInbox" />
+          </PressableCard>
+        </View>
+
+        {/* Quick Actions */}
+        <Animated.View entering={FadeInDown.delay(ANIMATION.STAGGER_DELAY * 3.5).springify()}>
+          <Text size="xl" weight="bold" style={styles.sectionTitle} tx="homeScreen:explore" />
+        </Animated.View>
+
+        <PressableCard
+          style={styles.actionCard}
+          onPress={handleNavigateToComponents}
+          delay={ANIMATION.STAGGER_DELAY * 4}
+        >
+          <View style={styles.actionContent}>
+            <View style={styles.actionTitleRow}>
+              <View style={[styles.iconBox, { backgroundColor: theme.colors.palette.primary100 }]}>
+                <Ionicons name="cube-outline" size={24} color={theme.colors.palette.primary600} />
+              </View>
+              <Text weight="semiBold" style={styles.actionTitle} tx="homeScreen:uiComponents" />
+            </View>
+            <Text
+              size="sm"
+              color="secondary"
+              style={styles.actionDescription}
+              tx="homeScreen:uiComponentsDescription"
+            />
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={theme.colors.foregroundTertiary} />
+        </PressableCard>
+
+        <PressableCard
+          style={styles.actionCard}
+          onPress={() => navigation.navigate("Profile")}
+          delay={ANIMATION.STAGGER_DELAY * 4.5}
+        >
+          <View style={styles.actionContent}>
+            <View style={styles.actionTitleRow}>
+              <View
+                style={[styles.iconBox, { backgroundColor: theme.colors.palette.secondary100 }]}
+              >
+                <Ionicons
+                  name="person-outline"
+                  size={24}
+                  color={theme.colors.palette.secondary600}
                 />
               </View>
-              <Text
-                size="sm"
-                color="secondary"
-                style={styles.actionDescription}
-                tx="homeScreen:premiumFeaturesDescription"
-              />
+              <Text weight="semiBold" style={styles.actionTitle} tx="homeScreen:myProfile" />
             </View>
-            <Ionicons name="chevron-forward" size={20} color={theme.colors.foregroundTertiary} />
-          </PressableCard>
-        </ScrollView>
-      </LinearGradient>
+            <Text
+              size="sm"
+              color="secondary"
+              style={styles.actionDescription}
+              tx="homeScreen:myProfileDescription"
+            />
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={theme.colors.foregroundTertiary} />
+        </PressableCard>
+
+        <PressableCard
+          style={styles.actionCard}
+          onPress={() => navigation.navigate("Paywall")}
+          delay={ANIMATION.STAGGER_DELAY * 5}
+        >
+          <View style={styles.actionContent}>
+            <View style={styles.actionTitleRow}>
+              <View style={[styles.iconBox, { backgroundColor: theme.colors.palette.accent100 }]}>
+                <Ionicons name="star-outline" size={24} color={theme.colors.palette.accent600} />
+              </View>
+              <Text weight="semiBold" style={styles.actionTitle} tx="homeScreen:premiumFeatures" />
+            </View>
+            <Text
+              size="sm"
+              color="secondary"
+              style={styles.actionDescription}
+              tx="homeScreen:premiumFeaturesDescription"
+            />
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={theme.colors.foregroundTertiary} />
+        </PressableCard>
+      </ScrollView>
     </View>
   )
 }
@@ -288,16 +285,10 @@ export const HomeScreen: FC<HomeScreenProps> = function HomeScreen(_props) {
 const styles = StyleSheet.create((theme) => ({
   container: {
     flex: 1,
-    // Web needs explicit height
+    // Web needs explicit height so the inner ScrollView can constrain to it and overflow.
+    // Using minHeight on multiple nested layers breaks scroll on web — keep it on the outer only.
     ...(isWeb && {
-      minHeight: webDimension("100vh"),
-    }),
-  },
-  gradient: {
-    flex: 1,
-    // Web needs explicit height
-    ...(isWeb && {
-      minHeight: webDimension("100vh"),
+      height: webDimension("100%"),
     }),
   },
   scrollView: {
