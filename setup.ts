@@ -372,6 +372,9 @@ const askQuestion = async (
           if (message.toLowerCase().includes("project name")) {
             return chalk.red("❌ Project name must be lowercase, numbers, and dashes only (e.g., my-awesome-app)")
           }
+          if (message.toLowerCase().includes("redirect url")) {
+            return chalk.red("❌ Please enter a valid URL or deep link (e.g., shipnative://verify-email or https://example.com)")
+          }
           if (message.toLowerCase().includes("url")) {
             return chalk.red("❌ Please enter a valid URL starting with https://")
           }
@@ -470,6 +473,15 @@ const validateUrl = (url: string) => {
   try {
     const parsed = new URL(url)
     return parsed.protocol === "https:"
+  } catch {
+    return false
+  }
+}
+const validateUrlOrDeepLink = (url: string) => {
+  if (!url) return false
+  try {
+    new URL(url)
+    return true
   } catch {
     return false
   }
@@ -1206,11 +1218,10 @@ const updateInlineConditionalRequires = (selectedProvider: BackendProvider): voi
 `
     )
 
-    // Replace the useAuth function to directly use Supabase without calling both hooks
+    // Remove the useSelectedAuthHook ternary and rewrite useAuth to call Supabase directly
     content = content.replace(
-      /export function useAuth\(\): AppAuthState & AppAuthActions \{\n  \/\/ Call both hooks unconditionally to satisfy React's rules of hooks\n  \/\/ The unused hook's state will be ignored\n  const convexAuth = useConvexAppAuth\(\)\n  const supabaseAuth = useSupabaseAppAuth\(\)\n\n  \/\/ Return the appropriate auth based on backend config\n  return isConvex \? convexAuth : supabaseAuth\n\}/,
+      /const useSelectedAuthHook: \(\) => AppAuthState & AppAuthActions = isConvex\n  \? useConvexAppAuth\n  : useSupabaseAppAuth\n\nexport function useAuth\(\): AppAuthState & AppAuthActions \{\n  return useSelectedAuthHook\(\)\n\}/,
       `export function useAuth(): AppAuthState & AppAuthActions {
-  // Using Supabase backend only (Convex code removed)
   return useSupabaseAppAuth()
 }`
     )
@@ -1220,27 +1231,33 @@ const updateInlineConditionalRequires = (selectedProvider: BackendProvider): voi
 
   // useAuth.ts - replace the Convex hook function with a stub
   updateFileContent("apps/app/app/hooks/useAuth.ts", (content) => {
-    // Replace useConvexAuth function with stub
+    // Replace the entire Convex Implementation section with a placeholder comment
     content = content.replace(
-      /function useConvexAuth\(\)[\s\S]*?^}$/m,
-      `function useConvexAuth() {
-  // Convex removed - returning no-op stub
-  return {
-    isLoading: false,
-    isAuthenticated: false,
-    userId: null,
-    user: null,
-    session: null,
-  }
+      /\/\/ ============================================================================\n\/\/ Convex Implementation\n\/\/ ============================================================================\n\n[\s\S]*?(?=\/\/ ============================================================================\n\/\/ Main Hook Export)/,
+      `// ============================================================================
+// Convex Implementation (removed - using Supabase only)
+// ============================================================================
+
+// Convex code has been removed. If you need Convex, restore from git or re-clone.
+
+`
+    )
+
+    // Remove the useSelectedAuthImpl ternary and rewrite useAuth to call Supabase directly
+    content = content.replace(
+      /const useSelectedAuthImpl: \(\) => UseAuthReturn = isConvex \? useConvexAuthImpl : useSupabaseAuth\n\nexport function useAuth\(\): UseAuthReturn \{\n  return useSelectedAuthImpl\(\)\n\}/,
+      `export function useAuth(): UseAuthReturn {
+  return useSupabaseAuth()
 }`
     )
-    // Update the export to always use supabase
-    content = content.replace(
-      /return isConvex \? convexAuth : supabaseAuth/g,
-      "return supabaseAuth // Convex removed"
-    )
-    // Remove isConvex import
+
+    // Remove isConvex from the import (keep env if present)
+    content = content.replace(/import \{ env, isConvex \} from "\.\.\/config\/env"\n/, 'import { env } from "../config/env"\n')
     content = content.replace(/import \{ isConvex \} from "\.\.\/config\/env"\n/, "")
+
+    // Remove the useConvexAuth export since the function was removed
+    content = content.replace(/\/\*\*\n \* Force use of Convex auth regardless of env config\.\n \* Useful for migration or testing scenarios\.\n \*\/\nexport \{ useConvexAuthImpl as useConvexAuth \}\n/, "")
+
     return content
   })
 
@@ -1308,36 +1325,8 @@ const updateInlineConditionalRequires = (selectedProvider: BackendProvider): voi
     return content
   })
 
-  // useAuth.ts - replace useConvexAuthImpl with stub (different function name than I expected)
-  updateFileContent("apps/app/app/hooks/useAuth.ts", (content) => {
-    // Replace the entire useConvexAuthImpl function with a stub
-    // Note: Only include properties that exist in UseAuthReturn interface
-    const stubFunction = `function useConvexAuthImpl(): UseAuthReturn {
-  // Convex removed - returning no-op stub to satisfy React hooks rules
-  return {
-    user: null,
-    session: null,
-    loading: false,
-    isAuthenticated: false,
-    provider: "supabase",
-    signUp: async () => ({ error: new Error("Convex not configured") }),
-    signIn: async () => ({ error: new Error("Convex not configured") }),
-    signOut: async () => ({ error: null }),
-    verifyOtp: async () => ({ error: new Error("Convex not configured") }),
-    resetPassword: async () => ({ error: new Error("Convex not configured") }),
-    signInWithMagicLink: async () => ({ error: new Error("Convex not configured") }),
-    signInWithGoogle: async () => ({ error: new Error("Convex not configured") }),
-    signInWithApple: async () => ({ error: new Error("Convex not configured") }),
-    updateUser: async () => ({ error: new Error("Convex not configured") }),
-  }
-}`
-    // Match from function declaration to the closing brace at column 0
-    content = content.replace(
-      /function useConvexAuthImpl\(\): UseAuthReturn \{[\s\S]*?^}/m,
-      stubFunction
-    )
-    return content
-  })
+  // NOTE: useAuth.ts cleanup is now fully handled by the updateFileContent call above
+  // that removes the entire Convex Implementation section and rewrites the ternary
 
   // Update stores/auth/index.ts to directly export from supabase subdirectory
   // The convex subdirectory has been deleted (added to pathsToRemove)
@@ -1407,11 +1396,19 @@ const updateInlineConditionalRequiresForConvex = (selectedProvider: BackendProvi
 `
     )
 
-    // Replace the useAuth function to directly use Convex without calling both hooks
+    // Remove the isConvex guard in useConvexAppAuth (not needed when Convex is the only backend)
     content = content.replace(
-      /export function useAuth\(\): AppAuthState & AppAuthActions \{\n  \/\/ Call both hooks unconditionally to satisfy React's rules of hooks\n  \/\/ The unused hook's state will be ignored\n  const convexAuth = useConvexAppAuth\(\)\n  const supabaseAuth = useSupabaseAppAuth\(\)\n\n  \/\/ Return the appropriate auth based on backend config\n  return isConvex \? convexAuth : supabaseAuth\n\}/,
+      /  \/\/ If Convex is not the selected backend, return stub implementation\n  \/\/ This prevents trying to call Convex hooks when ConvexProvider isn't in the tree\n  if \(!isConvex\) \{[\s\S]*?\n  \}\n\n/,
+      ""
+    )
+
+    // Remove stale isConvex comment
+    content = content.replace(/  \/\/ Note: isConvex is a build-time constant[\s\S]*?determined at build time\)\n/, "")
+
+    // Remove the useSelectedAuthHook ternary and rewrite useAuth to call Convex directly
+    content = content.replace(
+      /const useSelectedAuthHook: \(\) => AppAuthState & AppAuthActions = isConvex\n  \? useConvexAppAuth\n  : useSupabaseAppAuth\n\nexport function useAuth\(\): AppAuthState & AppAuthActions \{\n  return useSelectedAuthHook\(\)\n\}/,
       `export function useAuth(): AppAuthState & AppAuthActions {
-  // Using Convex backend only (Supabase code removed)
   return useConvexAppAuth()
 }`
     )
@@ -1539,41 +1536,44 @@ const updateInlineConditionalRequiresForConvex = (selectedProvider: BackendProvi
     return content
   })
 
-  // useAuth.ts - replace useSupabaseAuthImpl with stub
+  // useAuth.ts - remove Supabase implementation and wire directly to Convex
   updateFileContent("apps/app/app/hooks/useAuth.ts", (content) => {
-    const stubFunction = `function useSupabaseAuthImpl(): UseAuthReturn {
-  // Supabase removed - returning no-op stub to satisfy React hooks rules
-  return {
-    user: null,
-    session: null,
-    loading: false,
-    signUp: async () => ({ error: new Error("Supabase not configured") }),
-    signIn: async () => ({ error: new Error("Supabase not configured") }),
-    signOut: async () => ({ error: null }),
-    refreshSession: async () => ({ error: new Error("Supabase not configured") }),
-    sendOtp: async () => ({ error: new Error("Supabase not configured") }),
-    verifyOtp: async () => ({ error: new Error("Supabase not configured") }),
-    sendResetPasswordEmail: async () => ({ error: new Error("Supabase not configured") }),
-    resetPassword: async () => ({ error: new Error("Supabase not configured") }),
-    sendMagicLink: async () => ({ error: new Error("Supabase not configured") }),
-    verifyMagicLink: async () => ({ error: new Error("Supabase not configured") }),
-    signInWithGoogle: async () => ({ error: new Error("Supabase not configured") }),
-    signInWithApple: async () => ({ error: new Error("Supabase not configured") }),
-    updateUser: async () => ({ error: new Error("Supabase not configured") }),
-    deleteAccount: async () => ({ error: new Error("Supabase not configured") }),
-  }
+    // Replace the entire Supabase Implementation section with a placeholder comment
+    content = content.replace(
+      /\/\/ ============================================================================\n\/\/ Supabase Implementation\n\/\/ ============================================================================\n\nfunction useSupabaseAuth\(\): UseAuthReturn \{[\s\S]*?(?=\/\/ ============================================================================\n\/\/ Convex Implementation)/,
+      `// ============================================================================
+// Supabase Implementation (removed - using Convex only)
+// ============================================================================
+
+// Supabase code has been removed. If you need Supabase, restore from git or re-clone.
+
+`
+    )
+
+    // Remove the isConvex guard in useConvexAuthImpl (not needed when Convex is the only backend)
+    content = content.replace(
+      /  \/\/ If Convex is not the selected backend, return stub implementation\n  \/\/ This prevents trying to call Convex hooks when ConvexProvider isn't in the tree\n  if \(!isConvex\) \{[\s\S]*?\n  \}\n\n/,
+      ""
+    )
+
+    // Remove stale isConvex comment
+    content = content.replace(/  \/\/ Note: isConvex is a build-time constant[\s\S]*?determined at build time\)\n/, "")
+
+    // Remove the useSelectedAuthImpl ternary and rewrite useAuth to call Convex directly
+    content = content.replace(
+      /const useSelectedAuthImpl: \(\) => UseAuthReturn = isConvex \? useConvexAuthImpl : useSupabaseAuth\n\nexport function useAuth\(\): UseAuthReturn \{\n  return useSelectedAuthImpl\(\)\n\}/,
+      `export function useAuth(): UseAuthReturn {
+  return useConvexAuthImpl()
 }`
-    content = content.replace(
-      /function useSupabaseAuthImpl\(\): UseAuthReturn \{[\s\S]*?^}/m,
-      stubFunction
     )
-    // Update the export to always use convex
-    content = content.replace(
-      /return isConvex \? convexAuth : supabaseAuth/g,
-      "return convexAuth // Supabase removed"
-    )
-    // Remove isConvex import
+
+    // Remove isConvex from the import (keep env if present)
+    content = content.replace(/import \{ env, isConvex \} from "\.\.\/config\/env"\n/, 'import { env } from "../config/env"\n')
     content = content.replace(/import \{ isConvex \} from "\.\.\/config\/env"\n/, "")
+
+    // Remove the useSupabaseAuth export since Supabase is removed
+    content = content.replace(/export \{ useSupabaseAuth \}\n/, "")
+
     return content
   })
 
@@ -2269,7 +2269,7 @@ const configureAppEnvironment = async (
   console.log(chalk.dim("   💡 Will be updated to use your app scheme automatically"))
   services.EXPO_PUBLIC_EMAIL_REDIRECT_URL = await askQuestion(
     "Enter email confirmation redirect URL (press Enter to keep default)",
-    null,
+    validateUrlOrDeepLink,
     defaults.EXPO_PUBLIC_EMAIL_REDIRECT_URL || "shipnative://verify-email"
   )
 
@@ -2278,7 +2278,7 @@ const configureAppEnvironment = async (
   console.log(chalk.dim("   💡 Will be updated to use your app scheme automatically"))
   services.EXPO_PUBLIC_PASSWORD_RESET_REDIRECT_URL = await askQuestion(
     "Enter password reset redirect URL (press Enter to keep default)",
-    null,
+    validateUrlOrDeepLink,
     defaults.EXPO_PUBLIC_PASSWORD_RESET_REDIRECT_URL || "shipnative://reset-password"
   )
 
