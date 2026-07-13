@@ -1,5 +1,11 @@
 # AGENTS.md
 
+> **This repo is being built into The Design Reader** — a premium Human Design
+> mobile app on top of the Shipnative boilerplate. Product spec:
+> [`apps/app/vibe/PROJECT.md`](./apps/app/vibe/PROJECT.md). Agent behavior
+> rules: [`CLAUDE.md`](./CLAUDE.md). Phase gates: [`ROADMAP.md`](./ROADMAP.md).
+> This AGENTS.md remains the source of truth for stack + coding conventions.
+
 ## Setup
 ```bash
 yarn install          # Install dependencies
@@ -329,6 +335,7 @@ All packages include promotional pricing when configured in RevenueCat:
 
 | Topic | File |
 |-------|------|
+| The Design Reader spec (HD canon, payload contract, tabs, v1 scope) | `apps/app/vibe/PROJECT.md` |
 | Styling patterns | `apps/app/vibe/STYLE_GUIDE.md` |
 | App architecture | `apps/app/vibe/ARCHITECTURE.md` |
 | Screen templates | `apps/app/vibe/SCREEN_TEMPLATES.md` |
