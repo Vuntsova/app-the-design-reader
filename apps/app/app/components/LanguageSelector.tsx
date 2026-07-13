@@ -33,6 +33,7 @@ const LANGUAGE_METADATA: Record<
 > = {
   en: { name: "English", countryCode: "US", nativeName: "English" },
   ar: { name: "Arabic", countryCode: "SA", nativeName: "العربية" },
+  bg: { name: "Bulgarian", countryCode: "BG", nativeName: "Български" },
   es: { name: "Spanish", countryCode: "ES", nativeName: "Español" },
   fr: { name: "French", countryCode: "FR", nativeName: "Français" },
   hi: { name: "Hindi", countryCode: "IN", nativeName: "हिन्दी" },

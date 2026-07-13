@@ -9,33 +9,38 @@ import i18n from "i18next"
 
 type Options = Parameters<typeof format>[2]
 
+// date-fns locale modules are CJS with a single named export ("bg", "enUS", …).
+// Using `.default` returns undefined at runtime, which silently falls back to English.
 let dateFnsLocale: Locale
 export const loadDateFnsLocale = () => {
   const primaryTag = i18n.language.split("-")[0]
   switch (primaryTag) {
     case "en":
-      dateFnsLocale = require("date-fns/locale/en-US").default
+      dateFnsLocale = require("date-fns/locale/en-US").enUS
       break
     case "ar":
-      dateFnsLocale = require("date-fns/locale/ar").default
+      dateFnsLocale = require("date-fns/locale/ar").ar
+      break
+    case "bg":
+      dateFnsLocale = require("date-fns/locale/bg").bg
       break
     case "ko":
-      dateFnsLocale = require("date-fns/locale/ko").default
+      dateFnsLocale = require("date-fns/locale/ko").ko
       break
     case "es":
-      dateFnsLocale = require("date-fns/locale/es").default
+      dateFnsLocale = require("date-fns/locale/es").es
       break
     case "fr":
-      dateFnsLocale = require("date-fns/locale/fr").default
+      dateFnsLocale = require("date-fns/locale/fr").fr
       break
     case "hi":
-      dateFnsLocale = require("date-fns/locale/hi").default
+      dateFnsLocale = require("date-fns/locale/hi").hi
       break
     case "ja":
-      dateFnsLocale = require("date-fns/locale/ja").default
+      dateFnsLocale = require("date-fns/locale/ja").ja
       break
     default:
-      dateFnsLocale = require("date-fns/locale/en-US").default
+      dateFnsLocale = require("date-fns/locale/en-US").enUS
       break
   }
 }

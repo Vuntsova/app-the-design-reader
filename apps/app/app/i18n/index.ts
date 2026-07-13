@@ -8,6 +8,7 @@ import { storage } from "@/utils/storage"
 
 // if English isn't your default language, move Translations to the appropriate language file.
 import ar from "./ar"
+import bg from "./bg"
 import en, { Translations } from "./en"
 import es from "./es"
 import fr from "./fr"
@@ -21,7 +22,7 @@ const RTL_LANGUAGES = ["ar"] // Languages that use RTL layout
 
 const systemLocales = Localization.getLocales()
 
-const resources = { ar, en, ko, es, fr, ja, hi }
+const resources = { ar, bg, en, ko, es, fr, ja, hi }
 const supportedTags = Object.keys(resources)
 
 // Checks to see if the device locale matches any of the supported locales

@@ -16,6 +16,7 @@ const LANGUAGE_STORAGE_KEY = "app_language"
  */
 export const SUPPORTED_LANGUAGES = {
   ar: "Arabic",
+  bg: "Bulgarian",
   en: "English",
   es: "Spanish",
   fr: "French",
