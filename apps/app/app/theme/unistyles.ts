@@ -200,6 +200,19 @@ export const lightTheme = {
     link: palette.primary600,
     tint: palette.primary500,
     separator: palette.gray200,
+
+    // Human Design BodyGraph (competitor mobile look — dark canvas, two-color
+    // personality/design system). Values are identical in light and dark
+    // themes: the BodyGraph is always rendered on a dark backdrop.
+    hdCanvas: "#1A0F1F",
+    hdPersonality: "#E91E63", // magenta
+    hdDesign: "#00BCD4", // cyan
+    hdInk: "#F0EAFA", // near-white text on dark canvas
+    hdMuted: "#9B93A6", // inactive gate numbers, small labels
+    hdDefinedCenter: "#F0EAFA", // near-white fill for defined centers
+    hdUndefinedCenter: "#2A1F30", // barely lighter than canvas
+    hdInactiveChannel: "#4A3F52", // grey-purple, thin channel base
+    hdSilhouette: "#2A1F30", // dark backdrop figure
   },
 
   // Typography
@@ -465,6 +478,18 @@ export const darkTheme = {
     link: palette.primary400,
     tint: palette.primary400,
     separator: palette.gray700,
+
+    // Human Design BodyGraph — same values as light theme; the graph is
+    // always rendered on a dark backdrop regardless of app theme.
+    hdCanvas: "#1A0F1F",
+    hdPersonality: "#E91E63",
+    hdDesign: "#00BCD4",
+    hdInk: "#F0EAFA",
+    hdMuted: "#9B93A6",
+    hdDefinedCenter: "#F0EAFA",
+    hdUndefinedCenter: "#2A1F30",
+    hdInactiveChannel: "#4A3F52",
+    hdSilhouette: "#2A1F30",
   },
 } as const
 

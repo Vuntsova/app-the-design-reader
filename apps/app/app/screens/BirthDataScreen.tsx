@@ -8,6 +8,7 @@ import { z } from "zod"
 import { useChart } from "@/hooks"
 
 import { BirthPlaceField } from "@/components/BirthPlaceField"
+import { BodyGraph } from "@/components/BodyGraph"
 import { Container } from "@/components/Container"
 import { DatePicker } from "@/components/DatePicker"
 import { Text } from "@/components/Text"
@@ -137,8 +138,10 @@ export const BirthDataScreen = () => {
           </View>
         ) : null}
 
-        {/* Raw JSON dump — Phase 1 debug view. Replace with the BodyGraph and
-            reading tabs once the engine round-trip is trusted. */}
+        {data ? <BodyGraph chart={data.chart} style={styles.bodyGraph} /> : null}
+
+        {/* Raw JSON dump — kept below the BodyGraph while the graph is
+            still Phase 1. Will disappear once we trust the render. */}
         {data ? (
           <View style={styles.resultBox}>
             <Text
@@ -189,6 +192,14 @@ const styles = StyleSheet.create((theme) => ({
     marginTop: theme.spacing.md,
     padding: theme.spacing.md,
     gap: theme.spacing.xs,
+  },
+  bodyGraph: {
+    width: "100%",
+    alignSelf: "center",
+    // Matches VIEWBOX aspect ratio in geometry.ts (375 × 750 — target is a
+    // 375px-wide iPhone).
+    aspectRatio: 375 / 750,
+    marginTop: theme.spacing.lg,
   },
   resultBox: {
     backgroundColor: theme.colors.card,
