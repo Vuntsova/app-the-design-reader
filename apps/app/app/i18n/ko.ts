@@ -3,6 +3,7 @@ import en, { Translations } from "./en"
 
 const ko: Translations = {
   birthDataScreen: en.birthDataScreen,
+  myChartScreen: en.myChartScreen,
   common: {
     ok: "확인!",
     cancel: "취소",

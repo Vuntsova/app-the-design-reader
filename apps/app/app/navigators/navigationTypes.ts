@@ -7,6 +7,8 @@ import {
 } from "@react-navigation/native"
 import { NativeStackScreenProps } from "@react-navigation/native-stack"
 
+import type { ChartRequest } from "@/services/chart"
+
 // Main Tab Navigator types
 export type PaywallParams = {
   fromOnboarding?: boolean
@@ -45,6 +47,7 @@ export type AppStackParamList = {
   ComponentShowcase: undefined
   DataDemo: undefined
   BirthData: undefined
+  MyChart: { request: ChartRequest }
   Main: NavigatorScreenParams<MainTabParamList>
   // 🔥 Your screens go here
   // SHIPNATIVE_GENERATOR_ANCHOR_APP_STACK_PARAM_LIST

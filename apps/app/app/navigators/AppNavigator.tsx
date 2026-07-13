@@ -253,6 +253,13 @@ const AppStack = () => {
               animation: "slide_from_right",
             }}
           />
+          <Stack.Screen
+            name="MyChart"
+            component={Screens.MyChartScreen}
+            options={{
+              animation: "slide_from_right",
+            }}
+          />
         </>
       )}
     </Stack.Navigator>

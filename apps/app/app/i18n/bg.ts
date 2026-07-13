@@ -303,6 +303,33 @@ const bg: Translations = {
       locationRequired: "Моля, въведи място на раждане.",
     },
   },
+  myChartScreen: {
+    title: "Моята карта",
+    loading: "Зареждане на картата…",
+    noData: "Все още няма данни.",
+    openFromBirthData: "Виж моята карта",
+    tabs: {
+      bodyGraph: "БодиГраф",
+      about: "За теб",
+      centers: "Центрове",
+      gates: "Портали",
+      channels: "Канали",
+    },
+    about: {
+      type: "Тип",
+      strategy: "Стратегия",
+      authority: "Авторитет",
+      profile: "Профил",
+      signature: "Подпис",
+      notSelfTheme: "Тема на Не-Себе",
+    },
+    status: {
+      defined: "Дефиниран",
+      undefined: "Недефиниран",
+    },
+    gatesCount: "{{count}} активни портала",
+    channelsCount: "{{count}} активни канала",
+  },
   tabs: {
     home: "Начало",
     components: "Компоненти",

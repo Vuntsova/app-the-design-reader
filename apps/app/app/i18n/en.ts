@@ -378,6 +378,33 @@ const en = {
       locationRequired: "Please enter a birth place.",
     },
   },
+  myChartScreen: {
+    title: "My Chart",
+    loading: "Loading your chart…",
+    noData: "No chart data yet.",
+    openFromBirthData: "View my chart",
+    tabs: {
+      bodyGraph: "BodyGraph",
+      about: "About",
+      centers: "Centers",
+      gates: "Gates",
+      channels: "Channels",
+    },
+    about: {
+      type: "Type",
+      strategy: "Strategy",
+      authority: "Authority",
+      profile: "Profile",
+      signature: "Signature",
+      notSelfTheme: "Not-Self Theme",
+    },
+    status: {
+      defined: "Defined",
+      undefined: "Undefined",
+    },
+    gatesCount: "{{count}} active gates",
+    channelsCount: "{{count}} active channels",
+  },
   errors: {
     invalidEmail: "Invalid email address.",
   },

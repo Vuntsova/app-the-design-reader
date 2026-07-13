@@ -17,4 +17,5 @@ export * from "./LoadingScreen"
 export * from "./ErrorScreen/ErrorBoundary"
 export * from "./DataDemoScreen"
 export * from "./BirthDataScreen"
+export * from "./MyChartScreen"
 // export other screens as needed

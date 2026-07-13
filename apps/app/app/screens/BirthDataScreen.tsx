@@ -1,6 +1,8 @@
 import { useState } from "react"
 import { Pressable, View } from "react-native"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { useNavigation } from "@react-navigation/native"
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { Controller, useForm } from "react-hook-form"
 import { StyleSheet } from "react-native-unistyles"
 import { z } from "zod"
@@ -15,6 +17,7 @@ import { Text } from "@/components/Text"
 import { TextField } from "@/components/TextField"
 
 import { type TxKeyPath } from "@/i18n"
+import type { AppStackParamList } from "@/navigators/navigationTypes"
 import type { ChartRequest } from "@/services/chart"
 
 // Zod messages are i18n keys, translated at render time by the field
@@ -32,6 +35,9 @@ const toApiDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pa
 const toApiTime = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`
 
 export const BirthDataScreen = () => {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<AppStackParamList>>()
+
   // Submitted request drives useChart. A birth chart is cached forever for a
   // given (date, time, location) — re-submitting the same values is free.
   const [request, setRequest] = useState<ChartRequest | undefined>(undefined)
@@ -138,6 +144,20 @@ export const BirthDataScreen = () => {
           </View>
         ) : null}
 
+        {data && request ? (
+          <Pressable
+            onPress={() => navigation.navigate("MyChart", { request })}
+            style={styles.viewChartButton}
+            accessibilityRole="button"
+          >
+            <Text
+              weight="semiBold"
+              style={styles.viewChartButtonText}
+              tx="myChartScreen:openFromBirthData"
+            />
+          </Pressable>
+        ) : null}
+
         {data ? <BodyGraph chart={data.chart} style={styles.bodyGraph} /> : null}
 
         {/* Raw JSON dump — kept below the BodyGraph while the graph is
@@ -184,6 +204,18 @@ const styles = StyleSheet.create((theme) => ({
   },
   submitText: {
     color: theme.colors.primaryForeground,
+    fontSize: theme.typography.sizes.lg,
+  },
+  viewChartButton: {
+    alignItems: "center",
+    backgroundColor: theme.colors.secondary,
+    borderRadius: theme.radius.lg,
+    marginTop: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.lg,
+  },
+  viewChartButtonText: {
+    color: theme.colors.secondaryForeground,
     fontSize: theme.typography.sizes.lg,
   },
   errorBox: {

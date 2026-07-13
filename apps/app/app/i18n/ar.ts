@@ -3,6 +3,7 @@ import en, { Translations } from "./en"
 
 const ar: Translations = {
   birthDataScreen: en.birthDataScreen,
+  myChartScreen: en.myChartScreen,
   common: {
     ok: "نعم",
     cancel: "حذف",
