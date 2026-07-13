@@ -2,6 +2,7 @@ import demoAr from "./demo-ar" // @demo remove-current-line
 import en, { Translations } from "./en"
 
 const ar: Translations = {
+  birthDataScreen: en.birthDataScreen,
   common: {
     ok: "نعم",
     cancel: "حذف",

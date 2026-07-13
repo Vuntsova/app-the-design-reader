@@ -1,0 +1,213 @@
+import { useState } from "react"
+import { Pressable, View } from "react-native"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { Controller, useForm } from "react-hook-form"
+import { StyleSheet } from "react-native-unistyles"
+import { z } from "zod"
+
+import { useChart } from "@/hooks"
+
+import { Container } from "@/components/Container"
+import { DatePicker } from "@/components/DatePicker"
+import { Text } from "@/components/Text"
+import { TextField } from "@/components/TextField"
+
+import { type TxKeyPath } from "@/i18n"
+import type { ChartRequest } from "@/services/chart"
+
+// Zod messages are i18n keys, translated at render time by the field
+// components (DatePicker.errorTx, TextField.helperTx).
+const schema = z.object({
+  datetime: z.date({ message: "birthDataScreen:errors.datetimeRequired" }),
+  location: z.string().min(1, "birthDataScreen:errors.locationRequired"),
+  name: z.string().optional(),
+})
+
+type FormData = z.infer<typeof schema>
+
+const pad = (n: number) => String(n).padStart(2, "0")
+const toApiDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+const toApiTime = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`
+
+export const BirthDataScreen = () => {
+  // Submitted request drives useChart. A birth chart is cached forever for a
+  // given (date, time, location) — re-submitting the same values is free.
+  const [request, setRequest] = useState<ChartRequest | undefined>(undefined)
+  const { data, error, isFetching } = useChart(request)
+
+  const {
+    control,
+    handleSubmit,
+    formState: { isValid },
+  } = useForm<FormData>({
+    resolver: zodResolver(schema),
+    mode: "onBlur",
+    defaultValues: { location: "", name: "" } as FormData,
+  })
+
+  const onSubmit = (form: FormData) => {
+    setRequest({
+      date: toApiDate(form.datetime),
+      time: toApiTime(form.datetime),
+      location: form.location,
+      name: form.name || undefined,
+    })
+  }
+
+  return (
+    <Container preset="scroll" keyboardAvoiding safeAreaEdges={["top", "bottom"]}>
+      <View style={styles.container}>
+        <Text preset="heading" tx="birthDataScreen:title" />
+        <Text color="secondary" tx="birthDataScreen:subtitle" style={styles.subtitle} />
+
+        <Controller
+          control={control}
+          name="datetime"
+          render={({ field, fieldState }) => (
+            <DatePicker
+              mode="datetime"
+              value={field.value}
+              onChange={field.onChange}
+              labelTx="birthDataScreen:datetimeLabel"
+              placeholderTx="birthDataScreen:datetimePlaceholder"
+              helperTx="birthDataScreen:datetimeHelper"
+              errorTx={fieldState.error?.message as TxKeyPath | undefined}
+              maxDate={new Date()}
+              style={styles.field}
+            />
+          )}
+        />
+
+        {/* TODO(PROJECT.md onboarding step 5): replace this with the birth-place
+            autocomplete. The chart engine's ALLOWED_PLACE_PAIRS rejects free-form
+            addresses with a 400 — a plain TextField will bounce for anything
+            that isn't a city/town/municipality/island/country. Ship autocomplete
+            before real users see this screen. */}
+        <Controller
+          control={control}
+          name="location"
+          render={({ field, fieldState }) => (
+            <TextField
+              value={field.value ?? ""}
+              onChangeText={field.onChange}
+              onBlur={field.onBlur}
+              labelTx="birthDataScreen:locationLabel"
+              placeholderTx="birthDataScreen:locationPlaceholder"
+              helperTx={
+                (fieldState.error?.message as TxKeyPath | undefined) ??
+                "birthDataScreen:locationHelper"
+              }
+              status={fieldState.error ? "error" : "default"}
+              autoCapitalize="words"
+              autoCorrect={false}
+              containerStyle={styles.field}
+            />
+          )}
+        />
+
+        <Controller
+          control={control}
+          name="name"
+          render={({ field }) => (
+            <TextField
+              value={field.value ?? ""}
+              onChangeText={field.onChange}
+              onBlur={field.onBlur}
+              labelTx="birthDataScreen:nameLabel"
+              placeholderTx="birthDataScreen:namePlaceholder"
+              autoCapitalize="words"
+              autoCorrect={false}
+              containerStyle={styles.field}
+            />
+          )}
+        />
+
+        <Pressable
+          onPress={handleSubmit(onSubmit)}
+          disabled={!isValid || isFetching}
+          style={[styles.submit, (!isValid || isFetching) && styles.submitDisabled]}
+          accessibilityRole="button"
+        >
+          <Text
+            weight="semiBold"
+            style={styles.submitText}
+            tx={isFetching ? "birthDataScreen:loading" : "birthDataScreen:submitButton"}
+          />
+        </Pressable>
+
+        {error ? (
+          <View style={styles.errorBox}>
+            <Text tx="birthDataScreen:errorTitle" color="error" weight="semiBold" />
+            <Text size="sm" color="error">
+              {error instanceof Error ? error.message : String(error)}
+            </Text>
+          </View>
+        ) : null}
+
+        {/* Raw JSON dump — Phase 1 debug view. Replace with the BodyGraph and
+            reading tabs once the engine round-trip is trusted. */}
+        {data ? (
+          <View style={styles.resultBox}>
+            <Text
+              tx="birthDataScreen:resultTitle"
+              weight="semiBold"
+              style={styles.resultTitle}
+            />
+            <Text size="xs" style={styles.resultJson}>
+              {JSON.stringify(data, null, 2)}
+            </Text>
+          </View>
+        ) : null}
+      </View>
+    </Container>
+  )
+}
+
+const styles = StyleSheet.create((theme) => ({
+  container: {
+    padding: theme.spacing.lg,
+    gap: theme.spacing.md,
+  },
+  subtitle: {
+    marginBottom: theme.spacing.md,
+  },
+  field: {
+    marginBottom: theme.spacing.md,
+  },
+  submit: {
+    alignItems: "center",
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.radius.lg,
+    marginTop: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.lg,
+    ...theme.shadows.md,
+  },
+  submitDisabled: {
+    opacity: 0.4,
+  },
+  submitText: {
+    color: theme.colors.primaryForeground,
+    fontSize: theme.typography.sizes.lg,
+  },
+  errorBox: {
+    backgroundColor: theme.colors.errorBackground,
+    borderRadius: theme.radius.md,
+    marginTop: theme.spacing.md,
+    padding: theme.spacing.md,
+    gap: theme.spacing.xs,
+  },
+  resultBox: {
+    backgroundColor: theme.colors.card,
+    borderRadius: theme.radius.md,
+    marginTop: theme.spacing.md,
+    padding: theme.spacing.md,
+  },
+  resultTitle: {
+    marginBottom: theme.spacing.sm,
+  },
+  resultJson: {
+    color: theme.colors.foreground,
+    fontFamily: theme.typography.fonts.regular,
+  },
+}))

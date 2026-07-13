@@ -2,6 +2,7 @@ import demoHi from "./demo-hi" // @demo remove-current-line
 import en, { Translations } from "./en"
 
 const hi: Translations = {
+  birthDataScreen: en.birthDataScreen,
   common: {
     ok: "ठीक है!",
     cancel: "रद्द करें",

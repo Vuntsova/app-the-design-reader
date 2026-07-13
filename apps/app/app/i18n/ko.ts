@@ -2,6 +2,7 @@ import demoKo from "./demo-ko" // @demo remove-current-line
 import en, { Translations } from "./en"
 
 const ko: Translations = {
+  birthDataScreen: en.birthDataScreen,
   common: {
     ok: "확인!",
     cancel: "취소",

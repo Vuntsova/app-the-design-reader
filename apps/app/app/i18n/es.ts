@@ -2,6 +2,7 @@ import demoEs from "./demo-es" // @demo remove-current-line
 import en, { Translations } from "./en"
 
 const es: Translations = {
+  birthDataScreen: en.birthDataScreen,
   common: {
     ok: "OK",
     cancel: "Cancelar",
