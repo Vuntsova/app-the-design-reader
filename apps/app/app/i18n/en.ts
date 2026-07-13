@@ -369,6 +369,7 @@ const en = {
     loading: "Calculating your chart…",
     errorTitle: "Something went wrong",
     resultTitle: "Chart JSON",
+    openFromWelcome: "Debug: Birth data entry",
     errors: {
       datetimeRequired: "Please pick a birth date and time.",
       locationRequired: "Please enter a birth place.",

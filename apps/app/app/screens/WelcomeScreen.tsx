@@ -35,6 +35,12 @@ export const WelcomeScreen: FC<WelcomeScreenProps> = function WelcomeScreen(_pro
     navigation.navigate("Register" as never)
   }
 
+  // Phase 1 debug entry point — the birth-data screen dumps raw chart JSON.
+  // Remove once the real onboarding flow lands.
+  const handleGoToBirthData = () => {
+    navigation.navigate("BirthData" as never)
+  }
+
   const handleAppleAuth = async () => {
     try {
       const { error } = await signInWithApple()
@@ -82,6 +88,19 @@ export const WelcomeScreen: FC<WelcomeScreenProps> = function WelcomeScreen(_pro
         disabled={isLoading}
       >
         <Text weight="semiBold" style={styles.secondaryButtonText} tx="welcomeScreen:signIn" />
+      </TouchableOpacity>
+
+      {/* Phase 1 debug button — reach the birth-data screen without auth. */}
+      <TouchableOpacity
+        style={styles.secondaryButton}
+        onPress={handleGoToBirthData}
+        activeOpacity={0.8}
+      >
+        <Text
+          weight="semiBold"
+          style={styles.secondaryButtonText}
+          tx="birthDataScreen:openFromWelcome"
+        />
       </TouchableOpacity>
 
       {/* Social Login Section - Only show if at least one social auth is enabled */}

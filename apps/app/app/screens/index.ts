@@ -16,4 +16,5 @@ export * from "./ComponentShowcaseScreen"
 export * from "./LoadingScreen"
 export * from "./ErrorScreen/ErrorBoundary"
 export * from "./DataDemoScreen"
+export * from "./BirthDataScreen"
 // export other screens as needed

@@ -246,6 +246,13 @@ const AppStack = () => {
               animation: "slide_from_right",
             }}
           />
+          <Stack.Screen
+            name="BirthData"
+            component={Screens.BirthDataScreen}
+            options={{
+              animation: "slide_from_right",
+            }}
+          />
         </>
       )}
     </Stack.Navigator>

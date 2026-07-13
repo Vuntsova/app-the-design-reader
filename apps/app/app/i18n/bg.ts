@@ -294,6 +294,7 @@ const bg: Translations = {
     loading: "Изчисляване на картата...",
     errorTitle: "Нещо се обърка",
     resultTitle: "JSON на картата",
+    openFromWelcome: "Дебъг: Данни за раждане",
     errors: {
       datetimeRequired: "Моля, избери дата и час на раждане.",
       locationRequired: "Моля, въведи място на раждане.",
