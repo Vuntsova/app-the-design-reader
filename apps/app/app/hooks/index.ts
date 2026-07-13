@@ -78,6 +78,7 @@ export { useWidgetData } from "./useWidgetData"
 
 export { queryClient } from "./queries/queryClient"
 export { queryKeys } from "./queries/queryKeys"
+export { useChart, chartKeys } from "./queries/useChart"
 
 // ============================================================================
 // Convex Data Hooks (only needed if using Convex backend)
