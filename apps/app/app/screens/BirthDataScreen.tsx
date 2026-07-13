@@ -7,6 +7,7 @@ import { z } from "zod"
 
 import { useChart } from "@/hooks"
 
+import { BirthPlaceField } from "@/components/BirthPlaceField"
 import { Container } from "@/components/Container"
 import { DatePicker } from "@/components/DatePicker"
 import { Text } from "@/components/Text"
@@ -78,29 +79,21 @@ export const BirthDataScreen = () => {
           )}
         />
 
-        {/* TODO(PROJECT.md onboarding step 5): replace this with the birth-place
-            autocomplete. The chart engine's ALLOWED_PLACE_PAIRS rejects free-form
-            addresses with a 400 — a plain TextField will bounce for anything
-            that isn't a city/town/municipality/island/country. Ship autocomplete
-            before real users see this screen. */}
+        {/* Location must come from a /geocode result — free text bounces off
+            the engine's ALLOWED_PLACE_PAIRS. RHF's `location` value is only
+            set when the user picks a suggestion; typing after selection
+            clears it, so the submit button stays disabled until a valid
+            result is chosen. */}
         <Controller
           control={control}
           name="location"
           render={({ field, fieldState }) => (
-            <TextField
+            <BirthPlaceField
               value={field.value ?? ""}
-              onChangeText={field.onChange}
+              onSelect={field.onChange}
               onBlur={field.onBlur}
-              labelTx="birthDataScreen:locationLabel"
-              placeholderTx="birthDataScreen:locationPlaceholder"
-              helperTx={
-                (fieldState.error?.message as TxKeyPath | undefined) ??
-                "birthDataScreen:locationHelper"
-              }
-              status={fieldState.error ? "error" : "default"}
-              autoCapitalize="words"
-              autoCorrect={false}
-              containerStyle={styles.field}
+              errorTx={fieldState.error?.message as TxKeyPath | undefined}
+              style={styles.field}
             />
           )}
         />
