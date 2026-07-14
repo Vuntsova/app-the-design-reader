@@ -54,7 +54,10 @@ export const BirthPlaceField: FC<BirthPlaceFieldProps> = ({
   const handleChangeText = (text: string) => {
     setQuery(text)
     setDropdownOpen(true)
-    if (value !== "") onSelect("")
+    // Only invalidate the RHF selection when the user actually edits away
+    // from the current selection. Guards against a spurious onChangeText from
+    // web sync after handleSelect wiping the value we just set.
+    if (value !== "" && text !== value) onSelect("")
   }
 
   const handleSelect = (displayName: string) => {
@@ -95,7 +98,10 @@ export const BirthPlaceField: FC<BirthPlaceFieldProps> = ({
             results.map((r, i) => (
               <Pressable
                 key={`${r.display_name}|${r.lat}|${r.lng}`}
-                onPress={() => handleSelect(r.display_name)}
+                // onPressIn (not onPress) so the selection commits on
+                // press-down, before the TextField's onBlur can fire and
+                // race the click. Web: mousedown → we've already selected.
+                onPressIn={() => handleSelect(r.display_name)}
                 style={[styles.dropdownRow, i === results.length - 1 && styles.dropdownRowLast]}
                 accessibilityRole="button"
                 accessibilityLabel={r.display_name}

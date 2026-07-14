@@ -329,6 +329,26 @@ const bg: Translations = {
     },
     gatesCount: "{{count}} активни портала",
     channelsCount: "{{count}} активни канала",
+    noActiveProfile: "Все още няма профил. Добави, за да видиш картата.",
+  },
+  profileSwitcher: {
+    title: "Твоите профили",
+    tapToSwitch: "Докосни за смяна",
+    noneSelected: "Няма избран профил",
+    noProfiles: "Все още няма запазени профили.",
+    delete: "Изтрий",
+    primary: "Ти",
+    addHeader: "Добави нов профил",
+    add: {
+      partner: "Партньор",
+      friend: "Приятел",
+      child: "Дете",
+    },
+    relationship: {
+      partner: "Партньор",
+      friend: "Приятел",
+      child: "Дете",
+    },
   },
   tabs: {
     home: "Начало",

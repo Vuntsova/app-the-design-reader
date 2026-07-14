@@ -4,6 +4,7 @@ import en, { Translations } from "./en"
 const ja: Translations = {
   birthDataScreen: en.birthDataScreen,
   myChartScreen: en.myChartScreen,
+  profileSwitcher: en.profileSwitcher,
   common: {
     ok: "OK",
     cancel: "キャンセル",

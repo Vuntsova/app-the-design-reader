@@ -41,6 +41,12 @@ process.
 - **Never commit generated files, credentials, or environment files.**
 - **Never `sudo`** without explaining why and getting approval.
 - **Never modify the `/chart` API contract** from the app side.
+- **Never change the chart engine's `/chart` payload without bumping
+  `CHART_CACHE_VERSION`** in `apps/app/app/stores/profiles/profileStore.ts` in
+  the same commit. Every saved profile caches its last chart response in MMKV
+  keyed by that version. A payload change without a bump ships stale data
+  silently to every device that already has a cached chart. This is exactly
+  the failure mode `Definition of done` warns against.
 - **Never build ahead of the current phase.** If asked, point at ROADMAP.md.
 - **Never rewrite the lockfile silently.** Use immutable/frozen install.
 - Keep `main` untouched. Work on `feature/the-design-reader`.

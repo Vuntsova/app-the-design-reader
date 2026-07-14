@@ -78,6 +78,19 @@ Handle exactly that.
 If you need any of the above, it is an **API change**, not something to fabricate
 in TypeScript.
 
+### Chart cache version
+
+The app caches each fetched chart alongside its profile in MMKV, tagged with
+`CHART_CACHE_VERSION` (exported from
+`apps/app/app/stores/profiles/profileStore.ts`). Cached charts are used as
+`initialData` for React Query so saved profiles render instantly on cold
+start and continue working offline.
+
+**Any change to the payload above requires bumping `CHART_CACHE_VERSION` in
+the same commit.** On mismatch, cached charts on user devices are treated as
+absent and refetched. Without the bump we ship silent wrongness — new engine,
+old chart, no visible difference. `/CLAUDE.md` lists this under Never.
+
 ### Rules for the app
 
 - **Never reimplement chart math in TypeScript.** Not gate lookup, not channel
@@ -147,9 +160,23 @@ Four channel states between two charts:
 - **Compromise** — one has the whole channel, the other has one gate
 - **Companionship** — both have the whole channel
 
-> There is **no numeric compatibility score.** The earlier schema invented
-> `summaryScores: {overall: number}`. That is astrology thinking. Delete it.
-> Compatibility is a set of named channel states, not a percentage.
+**Connection Theme.** Take the union of defined centers across both people. A center counts as "defined for the pair" if either person has it defined. Count how many of the nine that is, out of nine. The number gives the standard HD relationship theme:
+
+- **9-0 "Nowhere to Go"**: all nine defined between the two of you. Everything either of you needs is available inside the relationship. Nothing pulls either of you out into the world to find it.
+- **8-1 "Have Some Fun"**: eight defined, one shared open. That single open center is the escape hatch and the reason the pair keeps things light.
+- **7-2 "Work To Do"**: seven defined, two open. Real friction, real potential. The classic long-term pair. Most working marriages sit here.
+- **6-3 "Better To Be Free"**: six defined, three open. A meaningful piece of what each of you needs is not in the room. Hard to sustain long-term without a lot of intentional work.
+- **5-4 "Not a Relationship Anymore"**: five defined, four open. This one is not a partnership so much as a phase. You leave it changed, and it is usually not built to last.
+
+Derived, not stored. Recompute any time the two charts are compared. Nine centers total, so the counts are always 9-0, 8-1, 7-2, 6-3, or 5-4. Nothing else.
+
+**No numeric compatibility score. Ever.**
+
+The earlier schema invented `summaryScores: {overall: number}`. That is astrology thinking. Delete it.
+
+The connection chart shows mechanics, not quality. Genetic Matrix and Jovian Archive both frame their own compatibility tools that way, and every serious practitioner will say the same thing. Human Design does not tell you whether a relationship is "good," and it does not tell you one match is "better" than another. Two 7-2 pairs can be completely different experiences depending on which centers are defined, who is carrying which conditioning, and what the two people actually do about it. A percentage flattens all of that into a number, and the number will always be wrong.
+
+If we ship a percentage, we are a dating app wearing a Human Design costume. We lose Emiliya's audience, we lose every serious practitioner, and we deserve to be compared to Co-Star. Compatibility in this app is the four channel states plus the connection theme plus the type-pair dynamic. Never a score.
 
 ---
 
@@ -178,7 +205,18 @@ Sub-tabs: **BodyGraph / About / Centers / Gates / Channels**
 - Add relationship → **Partner / Friend / Child**
 - Enter or select the other person's birth data
 - Show the four channel states + center conditioning
-- **Child → surfaces the Parenting content.** This is the moat.
+- Show the **Connection Theme** (9-0, 8-1, 7-2, 6-3, 5-4) with a plain-language reading of what it means for this specific pair
+- Show the **Type-Pair Dynamic** (see below) for every relationship, and the parenting-flavored version whenever the "other person" is a Child
+- **Child mode surfaces the Parenting content and the parent-child type dynamic.** This is the moat.
+
+**Parent-Child Type Dynamics.** Not just a content library. A first-class feature the app computes and displays for every parent + child pair the user saves. Every combination of parent-type and child-type produces a specific pattern that has a name, a known failure mode, and a known workaround. Some examples:
+
+- Generator parent + Projector child. The parent's stamina expectations exhaust the child. What the parent experiences as a normal pace is what the child experiences as constantly on. The parent has to slow down on purpose, and treat the child's need for rest and recognition as a real signal, not laziness.
+- Manifestor parent + Generator child. The parent has to inform before doing anything that affects the child, and the child's Sacral needs actual yes/no questions instead of instructions. Skip either step and the household turns into a fight over control.
+- Projector parent + Manifestor child. The parent's instinct is to guide, and the child's design is to initiate. Guidance lands after the fact, not before. The parent has to let the child move first and hold the reflection for later.
+- Any pair that includes a Reflector, on either side. The environment is doing half the parenting. Move the room, change schools, change the neighborhood, watch what shifts. Treat setting as a variable, not a constant.
+
+Five types on each side gives 25 ordered parent-child combinations. The app shows the specific one for every Child profile the user adds, next to the four channel states and the connection theme. This is the material Emiliya wrote *The Manifestor Mom* around. It is the reason someone picks this app over Stella, and it is what the AI Reader draws from when a parent asks about their kid.
 
 ### 4. Transits
 - Current gate + line, with the line 1–6 progression

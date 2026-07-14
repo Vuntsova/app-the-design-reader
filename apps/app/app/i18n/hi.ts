@@ -4,6 +4,7 @@ import en, { Translations } from "./en"
 const hi: Translations = {
   birthDataScreen: en.birthDataScreen,
   myChartScreen: en.myChartScreen,
+  profileSwitcher: en.profileSwitcher,
   common: {
     ok: "ठीक है!",
     cancel: "रद्द करें",

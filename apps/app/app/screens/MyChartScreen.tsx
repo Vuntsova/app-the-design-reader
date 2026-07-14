@@ -6,12 +6,14 @@ import { useChart } from "@/hooks"
 
 import { BodyGraph } from "@/components/BodyGraph"
 import { Container } from "@/components/Container"
+import { ProfileSwitcher } from "@/components/ProfileSwitcher"
 import { Tabs, type Tab } from "@/components/Tabs"
 import { Text } from "@/components/Text"
 
 import { translate, type TxKeyPath } from "@/i18n"
 import type { AppStackScreenProps } from "@/navigators/navigationTypes"
-import type { Center, Chart } from "@/services/chart"
+import type { Center, Chart, ChartRequest } from "@/services/chart"
+import { useActiveProfile } from "@/stores/profiles"
 
 // The 9 HD centers, in canonical top-to-bottom order for the list.
 const CENTERS: Center[] = [
@@ -34,17 +36,30 @@ const TABS: Tab[] = [
   { key: "channels", tx: "myChartScreen:tabs.channels" },
 ]
 
-export const MyChartScreen: FC<AppStackScreenProps<"MyChart">> = ({ route }) => {
+export const MyChartScreen: FC<AppStackScreenProps<"MyChart">> = () => {
   const [activeTab, setActiveTab] = useState<string>("bodygraph")
-  const { data, isFetching, error } = useChart(route.params.request)
+  const activeProfile = useActiveProfile()
+  const request: ChartRequest | undefined = activeProfile
+    ? {
+        name: activeProfile.name,
+        date: activeProfile.date,
+        time: activeProfile.time,
+        location: activeProfile.location,
+      }
+    : undefined
+  const { data, isFetching, error } = useChart(request, activeProfile?.id)
   const chart = data?.chart
 
   return (
     <Container preset="scroll" safeAreaEdges={["top", "bottom"]}>
       <View style={styles.container}>
+        <ProfileSwitcher />
+
         <Text preset="heading" tx="myChartScreen:title" />
 
-        {isFetching && !chart ? (
+        {!activeProfile ? (
+          <Text tx="myChartScreen:noActiveProfile" color="secondary" />
+        ) : isFetching && !chart ? (
           <Text tx="myChartScreen:loading" color="secondary" />
         ) : error ? (
           <Text color="error">
@@ -174,7 +189,7 @@ const styles = StyleSheet.create((theme) => ({
   },
   bodyGraph: {
     width: "100%",
-    aspectRatio: 375 / 750,
+    aspectRatio: 980 / 850,
   },
   section: {
     gap: theme.spacing.sm,

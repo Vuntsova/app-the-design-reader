@@ -8,6 +8,7 @@ import {
 import { NativeStackScreenProps } from "@react-navigation/native-stack"
 
 import type { ChartRequest } from "@/services/chart"
+import type { Relationship } from "@/stores/profiles"
 
 // Main Tab Navigator types
 export type PaywallParams = {
@@ -46,8 +47,9 @@ export type AppStackParamList = {
   Welcome: undefined
   ComponentShowcase: undefined
   DataDemo: undefined
-  BirthData: undefined
-  MyChart: { request: ChartRequest }
+  BirthData: { relationship?: Relationship } | undefined
+  // MyChart reads the active profile from the store; no route params needed.
+  MyChart: undefined
   Main: NavigatorScreenParams<MainTabParamList>
   // 🔥 Your screens go here
   // SHIPNATIVE_GENERATOR_ANCHOR_APP_STACK_PARAM_LIST

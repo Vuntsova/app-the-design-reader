@@ -404,6 +404,27 @@ const en = {
     },
     gatesCount: "{{count}} active gates",
     channelsCount: "{{count}} active channels",
+    noActiveProfile: "No profile yet. Add one to see your chart.",
+  },
+  profileSwitcher: {
+    title: "Your profiles",
+    tapToSwitch: "Tap to switch",
+    noneSelected: "No profile selected",
+    noProfiles: "No saved profiles yet.",
+    delete: "Delete",
+    // Label used for the singular primary profile (the app user themselves).
+    primary: "You",
+    addHeader: "Add a new profile",
+    add: {
+      partner: "Partner",
+      friend: "Friend",
+      child: "Child",
+    },
+    relationship: {
+      partner: "Partner",
+      friend: "Friend",
+      child: "Child",
+    },
   },
   errors: {
     invalidEmail: "Invalid email address.",

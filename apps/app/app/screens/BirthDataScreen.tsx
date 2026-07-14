@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Pressable, View } from "react-native"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useNavigation } from "@react-navigation/native"
+import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native"
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { Controller, useForm } from "react-hook-form"
 import { StyleSheet } from "react-native-unistyles"
@@ -19,6 +19,7 @@ import { TextField } from "@/components/TextField"
 import { type TxKeyPath } from "@/i18n"
 import type { AppStackParamList } from "@/navigators/navigationTypes"
 import type { ChartRequest } from "@/services/chart"
+import { useProfileStore } from "@/stores/profiles"
 
 // Zod messages are i18n keys, translated at render time by the field
 // components (DatePicker.errorTx, TextField.helperTx).
@@ -37,6 +38,17 @@ const toApiTime = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`
 export const BirthDataScreen = () => {
   const navigation =
     useNavigation<NativeStackNavigationProp<AppStackParamList>>()
+  const route = useRoute<RouteProp<AppStackParamList, "BirthData">>()
+  // Default relationship for the entry created by this form. Welcome's
+  // "Debug: Birth data entry" button passes no params and defaults to
+  // "self"; the ProfileSwitcher's "Add partner/friend/child" buttons pass
+  // the appropriate relationship.
+  // If a relationship is passed we're adding a related profile (partner/
+  // friend/child). If not, we're creating or editing the primary — the
+  // singular profile representing the app user.
+  const relationship = route.params?.relationship
+  const setPrimary = useProfileStore((s) => s.setPrimary)
+  const addRelation = useProfileStore((s) => s.addRelation)
 
   // Submitted request drives useChart. A birth chart is cached forever for a
   // given (date, time, location) — re-submitting the same values is free.
@@ -146,7 +158,25 @@ export const BirthDataScreen = () => {
 
         {data && request ? (
           <Pressable
-            onPress={() => navigation.navigate("MyChart", { request })}
+            onPress={() => {
+              // Save the profile, then hand off to MyChart. setPrimary is
+              // idempotent (creates or edits the primary in place);
+              // addRelation always inserts a new row.
+              const birth = {
+                name: request.name?.trim() || request.location,
+                date: request.date,
+                time: request.time,
+                location: request.location,
+              }
+              const id = relationship
+                ? addRelation({ ...birth, relationship })
+                : setPrimary(birth)
+              // setPrimary auto-sets active when nothing was active; we set
+              // it explicitly here so a returning user editing the primary,
+              // or someone adding a relation, lands on what they just typed.
+              useProfileStore.getState().setActive(id)
+              navigation.navigate("MyChart")
+            }}
             style={styles.viewChartButton}
             accessibilityRole="button"
           >
@@ -228,9 +258,9 @@ const styles = StyleSheet.create((theme) => ({
   bodyGraph: {
     width: "100%",
     alignSelf: "center",
-    // Matches VIEWBOX aspect ratio in geometry.ts (375 × 750 — target is a
-    // 375px-wide iPhone).
-    aspectRatio: 375 / 750,
+    // Matches the site's desktop viewBox in geometry.ts (980 × 850) — wide
+    // enough to include the two planet ledgers alongside the body.
+    aspectRatio: 980 / 850,
     marginTop: theme.spacing.lg,
   },
   resultBox: {

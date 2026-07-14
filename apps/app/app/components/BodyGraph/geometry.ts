@@ -11,36 +11,43 @@
 import type { Center } from "@/services/chart"
 
 // ---------------------------------------------------------------------------
-// Mobile composition — target: 375px-wide iPhone. Competitor-style layout:
-//   body fills the center; narrow ledgers flank left/right; dark backdrop
-//   with a silhouette behind the body.
-// ---------------------------------------------------------------------------
+// Mobile composition — VERBATIM from the shipping site's bodygraph.js when
+// mobile === true (see line 581). Do not invent a composition.
 //
-// Body-space geometry (CENTER_PATHS / GATE_POSITIONS / CHANNEL_PATHS) is
-// authored around midline x=269, top y=15, extent (142-396, 15-456) —
-// 254 wide × 441 tall. Do not renumber. The transform below lifts it into
-// the 375×750 mobile viewport.
+// site viewBox     : "190 0 600 850"  (crops the desktop ledger margins)
+// site art group   : translate(0 66)  (top margin above the body)
+// site silhouette  : <image x=214 y=42 width=552 height=642> inside art
+//                    → outer image box (214, 108) → (766, 750)
+// site BODY_TRANSFORM: translate(490 84) scale(1.18 1.18) translate(-269 0)
+//                    inside art → body midline at outer x=490, y=150+1.18y_bs
+// site ledgers     : SKIPPED on mobile (bodygraph.js:597)
+// ---------------------------------------------------------------------------
 
-export const VIEWBOX = { minX: 0, minY: 0, width: 375, height: 750 }
+// Widened back to the site's desktop viewBox to fit the planet ledgers on
+// both sides (24..204 for design, 776..956 for personality).
+export const VIEWBOX = { minX: 0, minY: 0, width: 980, height: 850 }
+
+/** ART group transform. Everything else nests inside this. */
+export const ART_TRANSFORM = "translate(0 66)"
 
 /**
- * Places body-space content in the central column of the viewport (x=42..334,
- * y=122..629), leaving ~40px narrow ledger strips on each side.
- *   scale = 1.15  → body width 292, body height 507
- *   body midline (body-space x=269) → outer x=42 + 127*1.15 = 188.05
+ * BODY group transform, verbatim from bodygraph.js:15. Applied INSIDE the
+ * art group; do not bake the art translate into this constant.
  */
 export const BODY_TRANSFORM =
-  "translate(42 122) scale(1.15 1.15) translate(-142 -15)"
+  "translate(490 84) scale(1.18 1.18) translate(-269 0)"
 
 /**
- * Silhouette (native viewBox 140 70 972 1100) fit to viewport width 375,
- * y-offset chosen so the figure's head sits above the body's Head center
- * and the legs extend below Root.
- *   scale = 375 / 972 = 0.3858
- *   rendered size = 375 × 424.4
+ * Silhouette placement inside the art group. Reproduces the site's
+ *   <image x=214 y=42 width=552 height=642 preserveAspectRatio="xMidYMid meet"/>
+ * where the silhouette's own viewBox is 140 70 972 1100. Under "meet" with
+ * target aspect 552:642 vs source 972:1100, width is limiting:
+ *   scale = 552/972 = 0.567901
+ *   letterbox = (642 - 1100*scale)/2 = 8.6543 on top/bottom
+ * so the content top-left inside art lands at (214, 42+8.6543) = (214, 50.6543).
  */
 export const SILHOUETTE_TRANSFORM =
-  "translate(0 118) scale(0.385802) translate(-140 -70)"
+  "translate(214 50.6543) scale(0.567901) translate(-140 -70)"
 
 /** SVG path `d` for each center's outline. */
 export const CENTER_PATHS: Readonly<Record<Center, string>> = {
@@ -135,61 +142,5 @@ export const CHANNEL_PATHS: Readonly<Record<string, string>> = {
   "41-30": "M284 446 C355 452 396 422 391 379",
 }
 
-// =============================================================================
-// PLANET LEDGERS — flanking columns on the mobile canvas
-// =============================================================================
-
-/**
- * Compact ledger layout. All coordinates in outer viewport space (0..375
- * horizontally). Each row is just a planet glyph and a small colored pill
- * showing "gate.line" — no boxes, no planet names.
- */
-export const LEDGER = {
-  designX: 4, // left column x (design side)
-  personalityX: 341, // right column x (personality side)
-  columnWidth: 30,
-  rowStartY: 130, // first row top-y
-  rowStep: 32, // 13 rows × 32 = 416 (spans y=130..546, matches body span)
-  glyphCenterX: 15, // relative to column x
-  glyphBaselineY: 10, // relative to row top
-  glyphFontSize: 11,
-  pillX: 2, // relative to column x
-  pillY: 14, // relative to row top
-  pillWidth: 26,
-  pillHeight: 12,
-  pillCornerR: 6,
-  valueCenterX: 15, // relative to column x
-  valueBaselineY: 23, // relative to row top
-  valueFontSize: 8,
-}
-
-/**
- * The 13 astrology bodies shown on both ledgers, in the site's display
- * order, with their astrology glyph. Ported verbatim from bodygraph.js:79-83.
- */
-export const PLANETS: ReadonlyArray<readonly [string, string]> = [
-  ["Sun", "☉"],
-  ["Earth", "⊕"],
-  ["North Node", "☊"],
-  ["South Node", "☋"],
-  ["Moon", "☽"],
-  ["Mercury", "☿"],
-  ["Venus", "♀"],
-  ["Mars", "♂"],
-  ["Jupiter", "♃"],
-  ["Saturn", "♄"],
-  ["Uranus", "♅"],
-  ["Neptune", "♆"],
-  ["Pluto", "♇"],
-]
-
-/**
- * The site's ledger uses "North Node" / "South Node" as display names, but
- * the deployed engine emits "N. Node" / "S. Node" as record keys (verified
- * 2026-07-13). This alias resolves ledger display names to engine keys.
- * See bodygraph.js:85-88 for the site's own ALIAS map.
- */
-export const BODY_KEY_ALIAS: Readonly<Record<string, string>> = {
-  "North Node": "N. Node",
-  "South Node": "S. Node",
-}
+// Planet ledgers are skipped on mobile (bodygraph.js:597: `if (!mobile)
+// drawPlanetLedger(...)`). Nothing to configure here for the mobile composition.
