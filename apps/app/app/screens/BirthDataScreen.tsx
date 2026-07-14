@@ -175,7 +175,11 @@ export const BirthDataScreen = () => {
               // it explicitly here so a returning user editing the primary,
               // or someone adding a relation, lands on what they just typed.
               useProfileStore.getState().setActive(id)
-              navigation.navigate("MyChart")
+              // Primary flow gets the reveal → paywall soft-ask. Relation
+              // flow skips that: the user is already through the paywall
+              // (see ProfileSwitcher's isPro gate) and just wants to see
+              // the newly-added relation's chart.
+              navigation.navigate(relationship ? "MyChart" : "ChartReveal")
             }}
             style={styles.viewChartButton}
             accessibilityRole="button"

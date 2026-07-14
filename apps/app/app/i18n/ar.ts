@@ -5,6 +5,7 @@ const ar: Translations = {
   birthDataScreen: en.birthDataScreen,
   myChartScreen: en.myChartScreen,
   profileSwitcher: en.profileSwitcher,
+  chartRevealScreen: en.chartRevealScreen,
   common: {
     ok: "نعم",
     cancel: "حذف",

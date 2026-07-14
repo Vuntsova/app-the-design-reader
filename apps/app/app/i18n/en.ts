@@ -406,6 +406,16 @@ const en = {
     channelsCount: "{{count}} active channels",
     noActiveProfile: "No profile yet. Add one to see your chart.",
   },
+  chartRevealScreen: {
+    title: "Meet your Design",
+    subtitle: "Three things to hold on to, before we dig into the rest.",
+    loading: "Almost there…",
+    noData: "We couldn't load your chart. Try again.",
+    typeLabel: "Type",
+    strategyLabel: "Strategy",
+    authorityLabel: "Authority",
+    continue: "Continue",
+  },
   profileSwitcher: {
     title: "Your profiles",
     tapToSwitch: "Tap to switch",
@@ -415,6 +425,7 @@ const en = {
     // Label used for the singular primary profile (the app user themselves).
     primary: "You",
     addHeader: "Add a new profile",
+    proHint: "Available with Pro",
     add: {
       partner: "Partner",
       friend: "Friend",

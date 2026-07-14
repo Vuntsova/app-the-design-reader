@@ -50,6 +50,9 @@ export type AppStackParamList = {
   BirthData: { relationship?: Relationship } | undefined
   // MyChart reads the active profile from the store; no route params needed.
   MyChart: undefined
+  // ChartReveal is the Type / Strategy / Authority reveal shown once after
+  // birth data submission, before the (optional) Paywall.
+  ChartReveal: undefined
   Main: NavigatorScreenParams<MainTabParamList>
   // 🔥 Your screens go here
   // SHIPNATIVE_GENERATOR_ANCHOR_APP_STACK_PARAM_LIST

@@ -7,6 +7,7 @@ import { StyleSheet } from "react-native-unistyles"
 
 import { useActiveProfile, useProfileStore } from "@/stores/profiles"
 import type { Relationship } from "@/stores/profiles"
+import { useSubscriptionStore } from "@/stores/subscriptionStore"
 
 import { Text } from "@/components/Text"
 
@@ -25,6 +26,7 @@ export const ProfileSwitcher: FC = () => {
   const setActive = useProfileStore((s) => s.setActive)
   const remove = useProfileStore((s) => s.remove)
   const activeProfile = useActiveProfile()
+  const isPro = useSubscriptionStore((s) => s.isPro)
 
   const [open, setOpen] = useState(false)
 
@@ -37,6 +39,18 @@ export const ProfileSwitcher: FC = () => {
 
   const handleAdd = (relationship: Relationship) => {
     close()
+    if (!isPro) {
+      // Free tier: primary profile only. Adding a partner / friend / child
+      // is the paid feature; route to Paywall instead of BirthData.
+      //
+      // TODO(server-gate): When Supabase auth lands, the server-side
+      // profile-add mutation MUST independently verify RevenueCat
+      // entitlement (via webhook state or direct API check). isPro here
+      // is a client UX cache and is editable on jailbroken devices.
+      // See vibe/MONETIZATION.md → Trust Boundary.
+      navigation.navigate("Paywall")
+      return
+    }
     navigation.navigate("BirthData", { relationship })
   }
 
@@ -155,6 +169,14 @@ export const ProfileSwitcher: FC = () => {
               tx="profileSwitcher:addHeader"
               style={styles.addHeader}
             />
+            {isPro ? null : (
+              <Text
+                size="xs"
+                color="secondary"
+                tx="profileSwitcher:proHint"
+                style={styles.proHint}
+              />
+            )}
             <View style={styles.addRow}>
               {RELATIONS.map((rel) => (
                 <Pressable
@@ -238,6 +260,10 @@ const styles = StyleSheet.create((theme) => ({
   },
   addHeader: {
     marginTop: theme.spacing.xs,
+  },
+  proHint: {
+    marginTop: -theme.spacing.xxs,
+    fontStyle: "italic",
   },
   addRow: {
     flexDirection: "row",

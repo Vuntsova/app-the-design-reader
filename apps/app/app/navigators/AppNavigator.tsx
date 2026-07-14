@@ -260,6 +260,20 @@ const AppStack = () => {
               animation: "slide_from_right",
             }}
           />
+          <Stack.Screen
+            name="ChartReveal"
+            component={Screens.ChartRevealScreen}
+            options={{
+              animation: "slide_from_right",
+            }}
+          />
+          <Stack.Screen
+            name="Paywall"
+            component={Screens.PaywallScreen}
+            options={{
+              animation: "slide_from_right",
+            }}
+          />
         </>
       )}
     </Stack.Navigator>

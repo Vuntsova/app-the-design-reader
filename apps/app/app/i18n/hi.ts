@@ -5,6 +5,7 @@ const hi: Translations = {
   birthDataScreen: en.birthDataScreen,
   myChartScreen: en.myChartScreen,
   profileSwitcher: en.profileSwitcher,
+  chartRevealScreen: en.chartRevealScreen,
   common: {
     ok: "ठीक है!",
     cancel: "रद्द करें",

@@ -331,6 +331,16 @@ const bg: Translations = {
     channelsCount: "{{count}} активни канала",
     noActiveProfile: "Все още няма профил. Добави, за да видиш картата.",
   },
+  chartRevealScreen: {
+    title: "Запознай се с твоя Дизайн",
+    subtitle: "Три неща, които да запомниш, преди да навлезем в останалото.",
+    loading: "Почти там…",
+    noData: "Не успяхме да заредим картата. Опитай отново.",
+    typeLabel: "Тип",
+    strategyLabel: "Стратегия",
+    authorityLabel: "Авторитет",
+    continue: "Продължи",
+  },
   profileSwitcher: {
     title: "Твоите профили",
     tapToSwitch: "Докосни за смяна",
@@ -339,6 +349,7 @@ const bg: Translations = {
     delete: "Изтрий",
     primary: "Ти",
     addHeader: "Добави нов профил",
+    proHint: "Достъпно с Про",
     add: {
       partner: "Партньор",
       friend: "Приятел",
